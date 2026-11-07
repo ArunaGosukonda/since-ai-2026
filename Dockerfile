@@ -37,6 +37,7 @@ ENV GCP_REGION=europe-north1
 
 # Copy application source code, reference data, and web assets
 COPY src/ /app/src/
+COPY dsakit/ /app/dsakit/
 COPY data/reference/ /app/data/reference/
 COPY frontend/ /app/frontend/
 COPY demo.html /app/demo.html
