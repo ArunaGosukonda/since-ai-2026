@@ -542,6 +542,17 @@ class ActionSelector:
                     citations=["guidance_family_impersonation"],
                     decisive_question=None
                 )
+            if matches_any(t, [r"kaveri.*salasa|friend.*password|kysyy.*salasa|pyytää.*salasa|asking for.*password|kysyy.*koodi|pyytää.*koodi|asking for.*code|jakaisinko.*salasa|share.*password|lösenord|delar.*lösenord"]):
+                return DecisionRecord(
+                    primary_action="verify_via_official_channel",
+                    risk_level="high",
+                    urgency="today",
+                    required_steps=["dont_share_codes", "verify_out_of_band"],
+                    escalation_required=False,
+                    escalation_target=None,
+                    citations=["guidance_family_new_number", "guidance_credential_compromise"],
+                    decisive_question=None
+                )
             if matches_any(t, [r"vero|tax|veronpalautus|tax refund"]):
                 return DecisionRecord(
                     primary_action="do_not_interact_and_delete",

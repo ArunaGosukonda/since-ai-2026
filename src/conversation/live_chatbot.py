@@ -124,26 +124,48 @@ class LiveChatbot:
         
         # If decisive question is needed and not yet answered:
         if decisive and not facts.get("user_answer"):
-            topic, q_text = decisive
-            add_message(session_id, role="assistant", msg_type="question", content=q_text)
+            topic, _ = decisive
+            from src.decision.twin_resolver import QUESTIONS
+            q_topic_dict = QUESTIONS.get(topic, {})
+            q_primary = q_topic_dict.get(lang, q_topic_dict.get("en", "Can you provide more details?"))
+            q_en = q_topic_dict.get("en", q_primary)
+            
+            add_message(session_id, role="assistant", msg_type="question", content=q_primary)
             return {
                 "session_id": session_id,
                 "reply_type": "question",
-                "text": q_text,
+                "user_language": lang,
+                "text": q_primary,
+                "text_en": q_en,
                 "topic": topic,
                 "rag_docs": [
                     {
                         "id": d["id"],
-                        "title": d.get(f"title_{lang}", d.get("title_fi")),
-                        "excerpt": d.get(f"text_{lang}", d.get("text_fi"))[:160] + "..."
+                        "title": d.get(f"title_{lang}", d.get("title_en", d.get("title_fi"))),
+                        "excerpt": d.get(f"text_{lang}", d.get("text_en", d.get("text_fi")))[:160] + "...",
+                        "title_en": d.get("title_en", d.get("title_fi")),
+                        "excerpt_en": d.get("text_en", d.get("text_fi"))[:160] + "..."
                     } for d in rag_docs
                 ]
             }
 
-        # Otherwise, resolve to final advice
+        # Otherwise, resolve to final advice in user's language
         rec = self.selector.decide(ctx, facts, mode="multi_turn")
-        advice_text, steps, _, _ = generate_response(
+        advice_text_primary, steps_primary, _, _ = generate_response(
             ctx=ctx,
+            action=rec.primary_action,
+            required_steps=rec.required_steps,
+            decisive_question=None,
+            escalation_required=rec.escalation_required,
+            escalation_target=rec.escalation_target
+        )
+
+        # Generate English translation if user language is fi or sv
+        import copy
+        ctx_en = copy.deepcopy(ctx)
+        ctx_en.language = "en"
+        advice_text_en, steps_en, _, _ = generate_response(
+            ctx=ctx_en,
             action=rec.primary_action,
             required_steps=rec.required_steps,
             decisive_question=None,
@@ -157,8 +179,8 @@ class LiveChatbot:
             "risk_level": rec.risk_level,
             "primary_action": rec.primary_action,
             "urgency": rec.urgency,
-            "advice_text": advice_text,
-            "steps": steps,
+            "advice_text": advice_text_primary,
+            "steps": steps_primary,
             "questions_asked": [],
             "question_topics": [],
             "escalation_required": rec.escalation_required,
@@ -177,13 +199,19 @@ class LiveChatbot:
         return {
             "session_id": session_id,
             "reply_type": "final",
+            "user_language": lang,
             "text": final_ans.get("advice_text", ""),
+            "text_en": advice_text_en,
+            "steps_primary": final_ans.get("steps", steps_primary),
+            "steps_en": steps_en,
             "decision": final_ans,
             "rag_docs": [
                 {
                     "id": d["id"],
-                    "title": d.get(f"title_{lang}", d.get("title_fi")),
-                    "excerpt": d.get(f"text_{lang}", d.get("text_fi"))[:160] + "..."
+                    "title": d.get(f"title_{lang}", d.get("title_en", d.get("title_fi"))),
+                    "excerpt": d.get(f"text_{lang}", d.get("text_en", d.get("text_fi")))[:160] + "...",
+                    "title_en": d.get("title_en", d.get("title_fi")),
+                    "excerpt_en": d.get("text_en", d.get("text_fi"))[:160] + "..."
                 } for d in rag_docs
             ]
         }

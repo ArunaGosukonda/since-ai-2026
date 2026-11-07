@@ -74,7 +74,7 @@ def detect_decisive_question(ctx: FusedContext, facts: Optional[Dict[str, str]] 
             return "self_initiated", QUESTIONS["self_initiated"][lang]
             
     # 3. Operator SIM upgrade call offering 5G / asking for code -> code_shared
-    if j == "suspicious_call" and (ctx.has_sim_transfer_code or matches_any(t, [r"sim-päivity|sim upgrade|sim-uppgradering|sim-kort|esim|operaattor.*koodi|operator.*code"])):
+    if j == "suspicious_call" and (ctx.has_sim_transfer_code or matches_any(t, [r"sim-päivity|sim upgrade|sim-uppgradering|sim-kort|esim|operaattor.*koodi|operator.*code|operatör.*kod|bad om.*kod|pyysi.*koodi"])):
         if "code_shared" not in facts:
             return "code_shared", QUESTIONS["code_shared"][lang]
             

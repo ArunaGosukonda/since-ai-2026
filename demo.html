@@ -1,14 +1,15 @@
 <!DOCTYPE html>
-<html lang="fi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Since AI — DNA Digital Security Assistant</title>
+<title>DNA Digital Security Assistant — Live Chat</title>
 <style>
   :root {
     --dna-pink: #EA0066;
+    --dna-pink-hover: #D0005B;
     --dna-dark: #1E1E24;
-    --dna-light: #F4F5F7;
+    --dna-light: #F4F6F9;
     --dna-card: #FFFFFF;
     --dna-border: #E2E8F0;
     --text-primary: #0F172A;
@@ -20,251 +21,632 @@
     --risk-none: #3B82F6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { background: var(--dna-light); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; }
-  header { background: var(--dna-dark); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--dna-pink); }
-  .logo-area { display: flex; align-items: center; gap: 12px; }
-  .logo-badge { background: var(--dna-pink); color: white; font-weight: 800; font-size: 15px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
-  .header-title { font-size: 18px; font-weight: 600; }
-  .header-subtitle { font-size: 13px; color: #94A3B8; }
+  body { background: var(--dna-light); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
   
-  .layout { display: flex; flex: 1; overflow: hidden; }
+  header {
+    background: var(--dna-dark);
+    color: white;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--dna-pink);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge { background: var(--dna-pink); color: white; font-weight: 900; font-size: 15px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
+  .header-titles h1 { font-size: 18px; font-weight: 700; color: white; margin-bottom: 2px; }
+  .header-titles p { font-size: 12px; color: #94A3B8; }
   
-  /* Sidebar */
-  .sidebar { width: 340px; background: white; border-right: 1px solid var(--dna-border); display: flex; flex-direction: column; }
-  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--dna-border); font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .journey-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .journey-item { padding: 12px; border-radius: 8px; border: 1px solid var(--dna-border); cursor: pointer; transition: all 0.15s ease; background: white; }
-  .journey-item:hover { border-color: var(--dna-pink); background: #FFF5F8; }
-  .journey-item.active { border-color: var(--dna-pink); background: #FFF0F5; box-shadow: 0 2px 6px rgba(234,0,102,0.12); }
-  .journey-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-  .journey-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-header {
+    background: rgba(255,255,255,0.12);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-header:hover { background: rgba(255,255,255,0.22); }
   
-  /* Main Chat Area */
-  .main-area { flex: 1; display: flex; flex-direction: column; background: #F8FAFC; }
-  .persona-banner { background: white; border-bottom: 1px solid var(--dna-border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .persona-info { display: flex; align-items: center; gap: 14px; }
-  .persona-avatar { width: 44px; height: 44px; border-radius: 50%; background: #E0E7FF; color: #4338CA; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
-  .persona-details h3 { font-size: 15px; font-weight: 700; }
-  .persona-details p { font-size: 12px; color: var(--text-muted); }
-  .telemetry-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill { font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 600; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
-  .pill.alert { background: #FEE2E2; color: #991B1B; border-color: #F87171; }
-  .pill.safe { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
+  .chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 980px;
+    width: 100%;
+    margin: 0 auto;
+    background: white;
+    border-left: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    overflow: hidden;
+  }
   
-  .chat-feed { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  .suggestions-bar {
+    padding: 10px 20px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--dna-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .suggestions-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .chip {
+    background: white;
+    border: 1px solid #CBD5E1;
+    color: #334155;
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--dna-pink); color: var(--dna-pink); background: #FFF5F8; }
+  
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: #FAFBFC;
+  }
+  
   .msg-row { display: flex; width: 100%; gap: 12px; }
   .msg-row.user { justify-content: flex-end; }
-  .msg-bubble { max-width: 70%; padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .msg-row.assistant .msg-bubble { background: white; border: 1px solid var(--dna-border); border-top-left-radius: 4px; }
-  .msg-row.user .msg-bubble { background: var(--dna-pink); color: white; border-top-right-radius: 4px; }
-  .msg-row.system .msg-bubble { background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; margin: 0 auto; max-width: 80%; border-radius: 8px; font-size: 13px; }
   
-  .badge-tag { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; }
-  .badge-consent { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
-  .badge-question { background: #FAF5FF; color: #7E22CE; border: 1px solid #E9D5FF; }
-  .badge-final { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+  .msg-bubble {
+    max-width: 82%;
+    padding: 16px 20px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
   
-  /* Final Decision Card */
-  .decision-card { background: white; border: 2px solid var(--dna-pink); border-radius: 12px; padding: 18px; margin-top: 12px; box-shadow: 0 4px 12px rgba(234,0,102,0.1); }
-  .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--dna-border); padding-bottom: 10px; margin-bottom: 12px; }
-  .card-title { font-weight: 700; font-size: 15px; color: var(--dna-dark); }
-  .risk-badge { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; color: white; }
+  .msg-row.user .msg-bubble {
+    background: var(--dna-pink);
+    color: white;
+    border-top-right-radius: 4px;
+    font-weight: 500;
+  }
+  
+  .msg-row.assistant .msg-bubble {
+    background: white;
+    border: 1px solid var(--dna-border);
+    border-top-left-radius: 4px;
+    width: 100%;
+  }
+  
+  .lang-card {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+  .lang-card.primary {
+    background: #F8FAFC;
+    border-left: 4px solid var(--dna-pink);
+    border-top: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    border-bottom: 1px solid var(--dna-border);
+  }
+  .lang-card.translation {
+    background: #F1F5F9;
+    border-left: 4px solid #3B82F6;
+    border-top: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    border-bottom: 1px solid var(--dna-border);
+  }
+  .lang-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .badge-fi { background: #E0E7FF; color: #3730A3; }
+  .badge-sv { background: #FEF3C7; color: #92400E; }
+  .badge-en { background: #DBEAFE; color: #1E40AF; }
+  .badge-question { background: #FCE7F3; color: #BE185D; }
+  .badge-final { background: #DCFCE7; color: #15803D; }
+  
+  .card-text { font-size: 14.5px; color: var(--text-primary); font-weight: 600; line-height: 1.5; margin-bottom: 8px; }
+  .card-steps { margin-left: 18px; margin-top: 6px; font-size: 13.5px; color: #334155; }
+  .card-steps li { margin-bottom: 4px; }
+  
+  .decision-box {
+    background: white;
+    border: 1.5px solid var(--dna-border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .decision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--dna-border);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .decision-title { font-weight: 700; font-size: 14px; color: var(--dna-dark); }
+  .risk-tag { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; color: white; letter-spacing: 0.5px; }
   .risk-critical { background: var(--risk-critical); }
   .risk-high { background: var(--risk-high); }
   .risk-medium { background: var(--risk-medium); }
   .risk-low { background: var(--risk-low); }
   .risk-none { background: var(--risk-none); }
   
-  .step-list { margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
-  .audit-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--dna-border); }
-  .audit-pill { font-size: 10px; padding: 2px 6px; background: #F1F5F9; border-radius: 4px; color: #475569; }
+  .decision-row { font-size: 13px; margin-bottom: 6px; color: #334155; }
+  .decision-row strong { color: #0F172A; }
+  .action-code { background: #F1F5F9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #0F172A; border: 1px solid #CBD5E1; }
   
-  /* RAG Grounding Cards */
-  .rag-container { margin-top: 10px; border-top: 1px dashed #CBD5E1; padding-top: 8px; }
-  .rag-header { font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; }
-  .rag-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 10px; margin-top: 4px; font-size: 12px; }
-  .rag-title { font-weight: 700; color: #1E293B; margin-bottom: 2px; }
-  .rag-excerpt { color: #64748B; font-size: 11px; }
-
-  /* Interactive Chat Input Bar */
-  .chat-input-bar { background: white; border-top: 1px solid var(--dna-border); padding: 14px 20px; display: flex; gap: 10px; align-items: center; }
-  .chat-input-box { flex: 1; padding: 12px 16px; border: 1.5px solid var(--dna-border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s; }
-  .chat-input-box:focus { border-color: var(--dna-pink); }
-  .btn { padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.15s ease; white-space: nowrap; }
+  .rag-panel { margin-top: 14px; border-top: 1px dashed #CBD5E1; padding-top: 10px; }
+  .rag-panel-title { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .rag-item {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+  }
+  .rag-item-title { font-weight: 700; color: #1E293B; margin-bottom: 3px; }
+  .rag-item-excerpt { font-size: 12px; color: #64748B; line-height: 1.45; }
+  
+  .chat-input-area {
+    background: white;
+    border-top: 1px solid var(--dna-border);
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .input-field {
+    flex: 1;
+    padding: 14px 18px;
+    border: 1.5px solid var(--dna-border);
+    border-radius: 8px;
+    font-size: 14.5px;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+  .input-field:focus { border-color: var(--dna-pink); box-shadow: 0 0 0 3px rgba(234,0,102,0.1); }
+  
+  .btn {
+    padding: 13px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .btn-primary { background: var(--dna-pink); color: white; }
-  .btn-primary:hover { background: #D0005B; }
+  .btn-primary:hover { background: var(--dna-pink-hover); }
   .btn-secondary { background: #E2E8F0; color: #334155; }
   .btn-secondary:hover { background: #CBD5E1; }
+  
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-area">
+  <div class="header-left">
     <div class="logo-badge">DNA</div>
-    <div>
-      <div class="header-title">Oma DNA — Digitaalinen Tietoturva-avustaja</div>
-      <div class="header-subtitle">RAG Grounded &bull; Multi-Turn Security Chatbot &bull; Zero Hallucinations</div>
+    <div class="header-titles">
+      <h1>DNA Digital Security Assistant</h1>
+      <p>Bilingual Responses (Finnish/Swedish + English) &bull; RAG Grounded &bull; Multi-Turn Security Resolution</p>
     </div>
   </div>
-  <div style="font-size: 12px; color: #94A3B8;">RAG: <strong>56 Articles</strong> | Pass: <strong>100.0%</strong> | Red-team: <strong>27/27 PASS</strong></div>
+  <div class="header-actions">
+    <button class="btn-header" onclick="startNewSession()">+ New Conversation</button>
+    <button class="btn-header" onclick="clearFeed()">Clear Chat</button>
+  </div>
 </header>
 
-<div class="layout">
-  <div class="sidebar">
-    <div class="sidebar-header">Valitse Tila / Presetit</div>
-    <div class="journey-list" id="journeyList"></div>
+<div class="chat-wrapper">
+  <!-- Suggestions Bar -->
+  <div class="suggestions-bar">
+    <span class="suggestions-label">Try an example:</span>
+    <button class="chip" onclick="fillInput('Sain tekstiviestin Postilta että paketti on pysäytetty ja pitää maksaa 2.90 euroa linkistä.')">📦 Posti Parcel Scam (FI)</button>
+    <button class="chip" onclick="fillInput('Någon ringde från operatören och bad om en bekräftelsekod.')">📞 Operator SIM Code Call (SV)</button>
+    <button class="chip" onclick="fillInput('My friend is asking for my password on WhatsApp. Should I send it?')">🔑 Friend Asking Password (EN)</button>
+    <button class="chip" onclick="fillInput('Puhelimessani luki Ei kenttää heti sen jälkeen kun tuli ilmoitus uudesta eSIM-kortista.')">📱 eSIM Swap / No Service (FI)</button>
+    <button class="chip" onclick="fillInput('Is it safe to share a password to a family member over the phone?')">🛡️ Family Password Share (EN)</button>
   </div>
-  
-  <div class="main-area">
-    <div class="persona-banner">
-      <div class="persona-info">
-        <div class="persona-avatar" id="avatarText">💬</div>
-        <div class="persona-details">
-          <h3 id="personaName">Oma Tietoturvabotti</h3>
-          <p id="personaStory">Kysy mistä tahansa tietoturva-asiasta</p>
+
+  <!-- Messages Feed -->
+  <div class="chat-feed" id="chatFeed">
+    <!-- Welcome Message -->
+    <div class="msg-row assistant">
+      <div class="msg-bubble">
+        <div style="font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--dna-dark);">
+          👋 Welcome to the DNA Digital Security Assistant
+        </div>
+        <p style="color: #475569; margin-bottom: 10px; font-size: 13.5px;">
+          You can ask about any suspicious SMS message, unexpected phone call, phishing link, login alert, or security question.
+        </p>
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 10px 14px; font-size: 12.5px; color: #1E40AF;">
+          <strong>Bilingual Support:</strong> If you write in <strong>Finnish</strong> or <strong>Swedish</strong>, you will automatically receive the answer in your chosen language plus a complete <strong>English Translation</strong>. You can also write directly in English.
         </div>
       </div>
-      <div class="telemetry-pills" id="telemetryPills"></div>
     </div>
-    
-    <div class="chat-feed" id="chatFeed"></div>
-    
-    <div class="chat-input-bar">
-      <input type="text" class="chat-input-box" id="userMsgInput" placeholder="Kirjoita kysymyksesi tai epäilyttävä viesti tähän ja paina Enter..." onkeydown="if(event.key==='Enter') sendCustomMessage()">
-      <button class="btn btn-primary" onclick="sendCustomMessage()">Lähetä &#10140;</button>
-      <button class="btn btn-secondary" id="btnNext" onclick="nextTurn()">Preset Turn &#9197;</button>
-      <button class="btn btn-secondary" onclick="resetCurrentCase()">Tyhjennä</button>
-    </div>
+  </div>
+
+  <!-- Input Area with English Buttons -->
+  <div class="chat-input-area">
+    <input type="text" class="input-field" id="userMsgInput" placeholder="Type your security question or paste a suspicious message here..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button class="btn btn-primary" id="btnSend" onclick="sendMessage()">
+      <span>Send Question</span> &#10140;
+    </button>
+    <button class="btn btn-secondary" onclick="startNewSession()">
+      New Conversation
+    </button>
   </div>
 </div>
 
 <script>
-let casesData = [];
-let currentIndex = 0;
-let isFinished = false;
 let activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
+let isBusy = false;
+let sessionState = { turn: 0, pendingQuestion: null };
 
-async function loadCases() {
-  casesData = [{"case_id": "CUSTOM-CHAT", "journey": "live_chat", "title": "💬 Oma Tietoturvabotti (Kysy mitä vain)", "profile": {"name": "Sinä (Käyttäjä)", "role": "DNA Asiakas / Yrityskäyttäjä", "tech": "Vapaa Kysely", "story": "Kirjoita mikä tahansa epäilyttävä viesti, puhelu, linkki tai tietoturvatilanne alla olevaan kenttään."}, "opening_message": "Hei! Olen DNA:n digitaalinen tietoturva-avustaja. Voit kysyä minulta mistä tahansa epäilyttävästä viestistä, puhelusta, linkistä tai laitteen käytöksestä. Mistä haluaisit kysyä?", "signals": {"device": {"summary": {"platform": "mobile", "os_version": "Live"}}, "subscription": {"network_status": {"service": "normal"}}}}, {"case_id": "DSA-D-0056", "split": "dev", "version": "2.0.1", "journey": "suspicious_message", "audience": "small_business", "locale": "fi-FI", "language": "fi", "persona": {"segment": "micro_business_owner", "age_band": "30-49", "tech_confidence": "high", "emotional_state": "calm", "language": "fi"}, "entry_point": "business_portal_chat", "user_identified": true, "opening_message": "Mitä tälle kannattaa tehdä?", "signals": {"artifact": {"type": "sms", "channel_language": "fi", "sender": "LUMIPANKKI", "body": "Lumipankki: Tililläsi havaittiin epätavallista toimintaa ja verkkopankkisi on suljettu. Vahvista henkilöllisyytesi tänään: https://lumipankki-tunnistus.invalid/login", "links": ["https://lumipankki-tunnistus.invalid/login"], "received_at": "2026-11-02T17:25:00+02:00", "thread_contains_genuine_messages_from_same_sender": true}, "link_check": {"url": "https://lumipankki-tunnistus.invalid/login", "verdict": "malicious", "confidence": 0.95, "categories": ["phishing", "brand_impersonation"], "domain_age_days": 4, "checked_at": "2026-11-05T19:29:00+02:00"}, "call_warning": null, "subscription": {"products": [{"type": "business_mobile", "count": 4}, {"type": "business_broadband"}], "recent_events": [], "network_status": {"service": "normal"}}, "device": {"summary": {"platform": "ios", "os_version": "iOS 19.0", "patch_status": "behind_90d", "security_app": "n/a"}, "recent_app_installs": null, "security_findings": null}, "operator_account": {"recent_logins": [{"days_ago": 3, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 2, "country": "FI", "device_known": true, "result": "success"}]}, "credential_exposure": {"found": true, "sources": [{"service_category": "online_game", "exposed": ["email"], "days_ago": 954}]}, "business": {"profile": {"company": "Parturi Saksi & Kampa", "employees": 12, "admins": 1, "it_support": "none", "payment_approval": "two_person"}, "staff_accounts": [{"role": "owner", "status": "active", "last_active_days_ago": 0, "admin": true}, {"role": "employee", "status": "active", "last_active_days_ago": 3, "admin": false}]}}, "signal_availability": {"link_check": "available", "call_warning": "not_applicable"}, "consent": {"requires_consent": ["subscription.network_status", "operator_account.recent_logins", "credential_exposure", "business.staff_accounts"], "pre_granted": []}, "tags": ["distractor_signal", "generic_opener"], "difficulty": "easy", "scenario_family": "SM-BANK-LOCKED", "title": "'Your bank account is locked' SMS in the bank's thread", "holdout_family": false, "ground_truth": {"risk_level": "high", "urgency": "today", "primary_action": "verify_via_official_channel", "acceptable_actions": ["do_not_interact_and_delete"], "escalation": {"required": false, "target": null, "acceptable_targets": []}, "external_contacts": [], "required_steps": ["dont_open_link", "verify_official_channel"], "optional_steps": ["delete_or_report_message", "contact_bank_now"], "must_not": ["open_link_to_check", "log_in_via_link", "thread_proves_genuine", "false_reassurance"], "guidance_refs": ["guidance_sender_id_spoofing", "guidance_bank_verification"], "must_ask_topics": [], "should_ask_topics": [], "relevant_topics": ["link_details", "credentials_entered", "message_content"], "single_turn": {"acceptable_actions": ["verify_via_official_channel", "do_not_interact_and_delete"], "must_ask_topics": [], "risk_range": ["high", "high"], "escalation_required": false, "note": null}, "necessary_signals": [], "is_benign_control": false, "twin_group": null, "branch": "main", "rationale_en": "Bank impersonation; the sender name can be spoofed, so appearing in the genuine thread proves nothing.", "rationale_fi": "Pankkina esiintyminen; lähettäjänimen voi väärentää, joten aidon ketjun sisällä näkyminen ei todista mitään.", "reference_answer_fi": "Älä avaa linkkiä äläkä syötä tunnuksiasi. Tekstiviestin lähettäjänimen voi väärentää, joten viesti voi näkyä samassa ketjussa kuin pankin aidot viestit. Tarkista tilisi tilanne pankin omassa sovelluksessa tai soita kortin kääntöpuolella olevaan numeroon. Jos kaikki on siellä kunnossa, voit poistaa viestin.", "reference_answer_en": "Do not open the link or enter your banking details. The sender name on a text can be faked, so a scam can appear in the same thread as the bank's real messages. Check your account in the bank's own app, or call the number on the back of your card. If everything looks normal there, you can delete the message."}, "simulation": {"language": "fi", "facts": {"credentials_entered": "En ole syöttänyt mitään.", "link_details": "En avannut linkkiä vielä."}, "unknown_reply": "En ole varma. En osaa sanoa.", "consent_policy": "grant", "consent_reply": "Joo, saat katsoa.", "max_assistant_turns": 6}, "profile": {"name": "Pentti (52)", "role": "Micro-business Owner (Salon Saksi & Kampa)", "tech": "Medium Confidence", "story": "Received an urgent SMS claiming his bank account is locked, appearing inside the bank's real message thread."}}, {"case_id": "DSA-D-0105", "split": "dev", "version": "2.0.1", "journey": "clicked_link", "audience": "consumer", "locale": "fi-FI", "language": "fi", "persona": {"segment": "adult", "age_band": "50-64", "tech_confidence": "high", "emotional_state": "worried", "language": "fi"}, "entry_point": "operator_app_chat", "user_identified": true, "opening_message": "Hei, mietityttää yksi juttu. Asensin ääniviestisovelluksen tekstiviestin linkistä ja annoin sille oikeuksia. Nyt puhelin käyttäytyy oudosti. Mitä minun pitäisi tehdä?", "signals": {"artifact": {"type": "sms", "channel_language": "fi", "sender": "+358 45 000 0382", "body": "Sinulle on ääniviesti. Kuuntele asentamalla Ääniviesti-sovellus: https://aaniviesti-sovellus.invalid/app.apk", "links": ["https://aaniviesti-sovellus.invalid/app.apk"], "received_at": "2026-11-05T13:47:00+02:00"}, "link_check": {"url": "https://aaniviesti-sovellus.invalid/app.apk", "verdict": "malicious", "confidence": 0.92, "categories": ["malware_download"], "domain_age_days": 0, "checked_at": "2026-11-05T19:57:00+02:00"}, "call_warning": null, "subscription": {"products": [{"type": "mobile", "esim": false}], "recent_events": [], "network_status": {"service": "normal"}}, "device": {"summary": {"platform": "android", "os_version": "Android 15", "patch_status": "current", "security_app": "active"}, "recent_app_installs": [{"name": "Kuvanmuokkaus", "source": "official_store", "days_ago": 5, "permissions": []}, {"name": "Ääniviesti", "source": "unknown_source", "days_ago": 0, "permissions": ["accessibility_service", "read_sms", "draw_over_apps", "install_unknown_apps"]}], "security_findings": {"unknown_profiles": [], "remote_access_apps": [], "accessibility_services": ["Ääniviesti"]}}, "operator_account": {"recent_logins": [{"days_ago": 3, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 1, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 5, "country": "FI", "device_known": true, "result": "success"}]}, "credential_exposure": null}, "signal_availability": {"link_check": "available", "call_warning": "not_applicable"}, "consent": {"requires_consent": ["subscription.network_status", "device.recent_app_installs", "device.security_findings", "operator_account.recent_logins"], "pre_granted": []}, "tags": [], "difficulty": "easy", "scenario_family": "CL-APK-INSTALLED", "title": "Installed an app from a link and granted permissions (Android)", "holdout_family": false, "ground_truth": {"risk_level": "critical", "urgency": "immediate", "primary_action": "isolate_device_and_scan", "acceptable_actions": ["escalate_to_human", "contact_bank_and_block_cards"], "escalation": {"required": true, "target": "security_specialist", "acceptable_targets": ["security_specialist", "operator_support_agent", "human_advisor"]}, "external_contacts": ["bank"], "required_steps": ["disconnect_device", "avoid_banking_on_device", "remove_app_or_profile", "contact_bank_now"], "optional_steps": ["use_trusted_device", "change_password", "get_device_checked"], "must_not": ["keep_using_device", "false_reassurance", "install_from_link"], "guidance_refs": ["guidance_malicious_app", "guidance_device_compromise"], "must_ask_topics": [], "should_ask_topics": [], "relevant_topics": ["app_installed", "device_behaviour", "credentials_entered", "time_of_event"], "single_turn": {"acceptable_actions": ["isolate_device_and_scan", "escalate_to_human", "contact_bank_and_block_cards"], "must_ask_topics": [], "risk_range": ["critical", "critical"], "escalation_required": true, "note": null}, "necessary_signals": ["device.recent_app_installs"], "is_benign_control": false, "twin_group": null, "branch": "main", "rationale_en": "Sideloaded app with accessibility and SMS permissions can read the screen and codes; treat the phone as untrusted.", "rationale_fi": "Linkistä asennettu sovellus esteettömyys- ja tekstiviestioikeuksilla voi lukea näytön ja koodit; puhelimeen ei voi luottaa.", "reference_answer_fi": "Laita puhelin heti lentotilaan, äläkä käytä sillä verkkopankkia tai muita tärkeitä palveluja. Linkistä asennettu sovellus, jolle annettiin esteettömyysoikeus, voi lukea näytön ja tekstiviestit, myös pankin koodit. Poista sovellus asetuksista ja vaihda tärkeät salasanat toisella laitteella. Koska käytit pankkisovellusta asennuksen jälkeen, ota yhteyttä pankkiin toisella puhelimella. Jos sovellusta ei saa poistettua, puhelin kannattaa palauttaa tehdasasetuksiin palauttamatta sovelluksia varmuuskopiosta. Voin ohjata sinut tietoturva-asiantuntijalle, joka auttaa puhelimen tarkistamisessa.", "reference_answer_en": "Put the phone in flight mode now and do not use online banking or other important services on it. An app installed from a link with accessibility permission can read your screen and text messages, including bank codes. Uninstall the app in settings and change important passwords from another device. Because you used your banking app after installing it, contact your bank from a different phone. If the app cannot be removed, reset the phone to factory settings without restoring apps from a backup. I can connect you to a security specialist who can help check the phone."}, "simulation": {"language": "fi", "facts": {"app_installed": "Joo, se on nyt puhelimessa. Annoin sille esteettömyysoikeuden kun se pyysi.", "device_behaviour": "Näyttö välkkyy välillä ja akku loppuu nopeasti.", "credentials_entered": "Avasin mobiilipankin asennuksen jälkeen ja tarkistin saldon."}, "unknown_reply": "En ole varma. En osaa sanoa.", "consent_policy": "grant", "consent_reply": "Joo, saat katsoa.", "max_assistant_turns": 6}, "profile": {"name": "Marjatta (68)", "role": "Senior Consumer", "tech": "Low Tech Confidence", "story": "Installed a voicemail app from an SMS link and gave it accessibility permissions. The phone is now behaving erratically."}}, {"case_id": "DSA-D-0160", "split": "dev", "version": "2.0.1", "journey": "suspicious_call", "audience": "consumer", "locale": "fi-FI", "language": "fi", "persona": {"segment": "parent", "age_band": "30-49", "tech_confidence": "high", "emotional_state": "calm", "language": "fi"}, "entry_point": "operator_app_chat", "user_identified": true, "opening_message": "Soittaja sanoi olevansa teidän asiakaspalvelusta ja halusi tekstiviestikoodin SIM-päivitystä varten.", "signals": {"artifact": {"type": "call", "channel_language": "fi", "sender": "+358 45 000 0295", "body": "(Puhelu) Soittaja sanoi olevansa operaattorini asiakaspalvelusta ja tarjosi ilmaista SIM-päivitystä 5G:tä varten. Hän sanoi lähettävänsä vahvistuskoodin, joka pitää lukea hänelle.", "links": [], "received_at": "2026-11-05T17:14:00+02:00"}, "link_check": null, "call_warning": {"number": "+358 45 000 0295", "warning": "none", "confidence": 0.06, "answered": true, "duration_s": 433, "direction": "incoming", "caller_id_possibly_spoofed": false, "call_time": "2026-11-07T20:29:00+02:00"}, "subscription": {"products": [{"type": "mobile", "esim": true}, {"type": "home_broadband"}], "recent_events": [{"type": "esim_transfer_code_sent", "minutes_ago": 14, "sent_to": "subscriber_number_by_sms", "requested_via": "customer_service_phone", "authentication": "personal_details_only"}], "network_status": {"service": "normal"}}, "device": {"summary": {"platform": "ios", "os_version": "iOS 19.0", "patch_status": "behind_30d", "security_app": "n/a"}, "recent_app_installs": null, "security_findings": null}, "operator_account": {"recent_logins": [{"days_ago": 6, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 1, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 2, "country": "FI", "device_known": true, "result": "success"}]}, "credential_exposure": null}, "signal_availability": {"link_check": "not_applicable", "call_warning": "available"}, "consent": {"requires_consent": ["subscription.recent_events", "subscription.network_status", "operator_account.recent_logins"], "pre_granted": []}, "tags": ["operator_relevant", "twin"], "difficulty": "medium", "scenario_family": "CA-OPERATOR-SIM-CODE-TWIN", "title": "'Operator' caller offering SIM upgrade asked for a code: given or not? (twin)", "holdout_family": false, "ground_truth": {"risk_level": "critical", "urgency": "immediate", "primary_action": "contact_operator_support", "acceptable_actions": ["escalate_to_human"], "escalation": {"required": true, "target": "operator_support_agent", "acceptable_targets": ["operator_support_agent", "security_specialist"]}, "external_contacts": ["bank"], "required_steps": ["contact_operator", "lock_subscription"], "optional_steps": ["contact_bank_now", "change_password", "use_trusted_device"], "must_not": ["share_code", "network_glitch", "wait_and_see", "false_reassurance"], "guidance_refs": ["guidance_sim_swap", "guidance_one_time_codes", "guidance_operator_impersonation"], "must_ask_topics": ["code_shared"], "should_ask_topics": [], "relevant_topics": ["code_shared", "call_details", "signal_lost", "time_of_event"], "single_turn": {"acceptable_actions": ["contact_operator_support", "escalate_to_human"], "must_ask_topics": ["code_shared"], "risk_range": ["medium", "critical"], "escalation_required": true, "note": "The visible input does not reveal the decisive fact. In single-turn, ask the decisive question and give the step that is safe if the riskier answer is true."}, "necessary_signals": ["subscription.recent_events"], "is_benign_control": false, "twin_group": "CA-OPERATOR-SIM-CODE-TWIN-D-03", "branch": "code_given", "rationale_en": "The eSIM transfer code was given away: the number can be moved to the scammer's device at any moment. The operator must block the transfer now; then the bank.", "rationale_fi": "eSIM-siirtokoodi annettiin pois: numero voidaan siirtää huijarin laitteeseen milloin tahansa. Operaattorin on estettävä siirto heti, sitten pankki.", "reference_answer_fi": "Tämä on yritys kaapata numerosi: antamallasi koodilla numeron voi siirtää toiseen laitteeseen. Yhdistän sinut nyt asiakaspalvelumme ihmiselle, joka voi estää eSIM-siirron ja lukita numerosi ennen kuin siirto ehditään tehdä. Jos puhelimesi menettää kentän, kerro siitä heti. Ota sen jälkeen yhteyttä pankkiisi, koska pankkien koodit tulevat tähän numeroon. Emme koskaan pyydä lukemaan koodia puhelimessa.", "reference_answer_en": "This is an attempt to take over your number: the code you gave can move your number to another device. I am connecting you now to a person in our customer service who can block the eSIM transfer and lock your number before the transfer can be made. If your phone loses signal, tell them straight away. Then contact your bank, because banks send their codes to this number. We never ask you to read out a code over the phone."}, "simulation": {"language": "fi", "facts": {"time_of_event": "Vartti sitten.", "code_shared": "Luin koodin hänelle ennen kuin aloin epäillä.", "signal_lost": "Puhelin toimii vielä normaalisti."}, "unknown_reply": "En ole varma. En osaa sanoa.", "consent_policy": "grant", "consent_reply": "Joo, saat katsoa.", "max_assistant_turns": 6}, "profile": {"name": "Jari (44)", "role": "Parent & DNA Mobile Subscriber", "tech": "High Tech Confidence", "story": "Received a phone call from someone claiming to be DNA customer service offering a 5G upgrade and demanding an SMS code."}}, {"case_id": "DSA-D-0337", "split": "dev", "version": "2.0.1", "journey": "breach_notice", "audience": "consumer", "locale": "fi-FI", "language": "fi", "persona": {"segment": "adult", "age_band": "30-49", "tech_confidence": "low", "emotional_state": "calm", "language": "fi"}, "entry_point": "operator_app_chat", "user_identified": true, "opening_message": "Ei kenttää puhelimessa ja tuli viesti eSIM-aktivoinnista. Mitä tapahtuu?", "signals": {"artifact": {"type": "sms", "channel_language": "fi", "sender": "Operaattori", "body": "eSIM-profiilisi on aktivoitu uuteen laitteeseen. Jos et tehnyt tätä, ota heti yhteyttä asiakaspalveluun.", "links": [], "received_at": "2026-11-08T16:54:00+02:00"}, "link_check": null, "call_warning": null, "subscription": {"products": [{"type": "mobile", "esim": false}, {"type": "home_broadband"}], "recent_events": [{"type": "esim_activation", "minutes_ago": 35, "channel": "customer_service_phone", "authentication": "personal_details_only", "new_device": "not_previously_seen"}], "network_status": {"service": "no_service", "since_minutes": 34}}, "device": {"summary": {"platform": "windows", "os_version": "Windows 11 25H2", "patch_status": "behind_90d", "security_app": "none"}, "recent_app_installs": [{"name": "Ruokalista", "source": "official_store", "days_ago": 6, "permissions": ["notifications"]}, {"name": "Bussiliput", "source": "official_store", "days_ago": 5, "permissions": ["location"]}], "security_findings": {"unknown_profiles": [], "remote_access_apps": [], "accessibility_services": []}}, "operator_account": {"recent_logins": [{"days_ago": 2, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 3, "country": "FI", "device_known": true, "result": "success"}]}, "credential_exposure": null}, "signal_availability": {"link_check": "not_applicable", "call_warning": "not_applicable"}, "consent": {"requires_consent": ["subscription.recent_events", "subscription.network_status", "device.recent_app_installs", "device.security_findings", "operator_account.recent_logins"], "pre_granted": []}, "tags": ["operator_relevant", "twin"], "difficulty": "hard", "scenario_family": "BR-SIM-SWAP-TWIN", "title": "Phone lost service after eSIM activation on a new device: user's own or not? (twin)", "holdout_family": false, "ground_truth": {"risk_level": "critical", "urgency": "immediate", "primary_action": "contact_operator_support", "acceptable_actions": ["escalate_to_human"], "escalation": {"required": true, "target": "operator_support_agent", "acceptable_targets": ["operator_support_agent", "security_specialist"]}, "external_contacts": ["bank"], "required_steps": ["contact_operator", "lock_subscription"], "optional_steps": ["contact_bank_now", "change_password", "use_trusted_device"], "must_not": ["network_glitch", "wait_and_see", "false_reassurance"], "guidance_refs": ["guidance_sim_swap"], "must_ask_topics": ["self_initiated"], "should_ask_topics": [], "relevant_topics": ["self_initiated", "signal_lost", "time_of_event", "code_shared"], "single_turn": {"acceptable_actions": ["contact_operator_support", "escalate_to_human"], "must_ask_topics": ["self_initiated"], "risk_range": ["none", "critical"], "escalation_required": true, "note": "The visible input does not reveal the decisive fact. In single-turn, ask the decisive question and give the step that is safe if the riskier answer is true."}, "necessary_signals": ["subscription.recent_events"], "is_benign_control": false, "twin_group": "BR-SIM-SWAP-TWIN-D-02", "branch": "not_me", "rationale_en": "Unrequested eSIM activation followed by loss of service: an active SIM takeover. Operator must stop it now; then bank.", "rationale_fi": "Pyytämätön eSIM-aktivointi ja sen jälkeen katkennut yhteys: SIM-kaappaus on käynnissä. Operaattorin on pysäytettävä se heti, sitten pankki.", "reference_answer_fi": "Tämä näyttää siltä, että joku on siirtänyt numerosi omaan laitteeseensa saadakseen koodisi. Yhdistän sinut nyt asiakaspalvelumme ihmiselle, joka voi pysäyttää eSIM-siirron ja lukita numerosi. Kun numero on suojattu, ota yhteyttä pankkiisi ja vaihda sähköpostisi salasana tältä kannettavalta. Älä jää odottamaan, että kenttä palaisi itsestään.", "reference_answer_en": "This looks like someone has moved your number to their own device to receive your codes. I am connecting you now to a person in our customer service who can stop the eSIM transfer and lock your number. Once the number is secured, contact your bank and change your email password from this laptop. Do not wait for the signal to come back by itself."}, "simulation": {"language": "fi", "facts": {"signal_lost": "Joo, ei kenttää ollenkaan.", "time_of_event": "Noin puoli tuntia sitten.", "self_initiated": "En ole tilannut mitään eSIMiä enkä vaihtanut puhelinta.", "code_shared": "Eilen joku soitti 'asiakaspalvelusta' ja kysyi henkilötietojani."}, "unknown_reply": "En ole varma. En osaa sanoa.", "consent_policy": "grant", "consent_reply": "Joo, saat katsoa.", "max_assistant_turns": 6}, "profile": {"name": "Leena (39)", "role": "Consumer Subscriber", "tech": "Medium Confidence", "story": "Phone suddenly lost network signal completely ('No Service') right after receiving an unexpected eSIM activation notice."}}, {"case_id": "DSA-D-0018", "split": "dev", "version": "2.0.1", "journey": "smb_incident", "audience": "small_business", "locale": "fi-FI", "language": "fi", "persona": {"segment": "micro_business_owner", "age_band": "50-64", "tech_confidence": "medium", "emotional_state": "calm", "language": "fi"}, "entry_point": "business_portal_chat", "user_identified": true, "opening_message": "Kysyn yrityksemme puolesta. Toimittaja pyytää maksamaan laskun uudelle tilille. Viesti tuli tutusta osoitteesta, joten se on kai kunnossa?", "signals": {"artifact": {"type": "email", "channel_language": "fi", "sender": "laskutus@puutavarapohjoisranta.test", "body": "Hei, pankkimme on vaihtunut. Maksathan avoimen laskun 20260684 (4 750 €) ja tulevat laskut jatkossa uudelle tilille FI00 0000 0000 0000 00. Terveisin, Puutavara Pohjoisranta Oy / laskutus", "links": [], "received_at": "2026-11-06T15:33:00+02:00"}, "link_check": null, "call_warning": null, "subscription": {"products": [{"type": "business_mobile", "count": 6}, {"type": "business_broadband"}], "recent_events": [], "network_status": {"service": "normal"}}, "device": {"summary": {"platform": "windows", "os_version": "Windows 11 25H2", "patch_status": "current", "security_app": "none"}, "recent_app_installs": [], "security_findings": {"unknown_profiles": [], "remote_access_apps": [], "accessibility_services": []}}, "operator_account": {"recent_logins": [{"days_ago": 5, "country": "FI", "device_known": true, "result": "success"}, {"days_ago": 0, "country": "FI", "device_known": true, "result": "success"}]}, "credential_exposure": null, "business": {"profile": {"company": "Parturi Saksi & Kampa", "employees": 12, "admins": 1, "it_support": "none", "payment_approval": "two_person"}, "staff_accounts": [{"role": "owner", "status": "active", "last_active_days_ago": 0, "admin": true}, {"role": "employee", "status": "active", "last_active_days_ago": 0, "admin": false}]}}, "signal_availability": {"link_check": "not_applicable", "call_warning": "not_applicable"}, "consent": {"requires_consent": ["subscription.network_status", "device.security_findings", "operator_account.recent_logins", "business.staff_accounts"], "pre_granted": []}, "tags": [], "difficulty": "easy", "scenario_family": "SB-SUPPLIER-BANK-CHANGE", "title": "Supplier email from familiar address announces new bank account", "holdout_family": false, "ground_truth": {"risk_level": "high", "urgency": "today", "primary_action": "verify_via_official_channel", "acceptable_actions": [], "escalation": {"required": false, "target": null, "acceptable_targets": []}, "external_contacts": [], "required_steps": ["dont_pay_or_transfer", "verify_out_of_band"], "optional_steps": ["two_person_approval", "keep_evidence"], "must_not": ["update_bank_details", "thread_proves_genuine", "reply_to_sender", "transfer_money"], "guidance_refs": ["guidance_invoice_fraud", "guidance_payment_verification"], "must_ask_topics": [], "should_ask_topics": [], "relevant_topics": ["payment_status", "business_access", "message_content"], "single_turn": {"acceptable_actions": ["verify_via_official_channel"], "must_ask_topics": [], "risk_range": ["high", "high"], "escalation_required": false, "note": null}, "necessary_signals": [], "is_benign_control": false, "twin_group": null, "branch": "main", "rationale_en": "Bank-detail change by email is the top SMB fraud, and familiar addresses can be compromised or spoofed.", "rationale_fi": "Tilinumeron muutos sähköpostilla on pienyritysten yleisin petos, ja tutunkin osoitteen voi kaapata tai väärentää.", "reference_answer_fi": "Älä maksa uudelle tilille ennen kuin olet varmistanut muutoksen. Tuttu lähettäjäosoite ei riitä, koska toimittajan sähköposti on voitu kaapata tai osoite väärentää. Soita toimittajan yhteyshenkilölle numeroon, joka sinulla on jo sopimuksesta tai aiemmista laskuista, älä viestissä mahdollisesti olevaan numeroon. Kirjaa, kuka varmisti ja milloin.", "reference_answer_en": "Do not pay to the new account until you have verified the change. A familiar sender address is not enough, because the supplier's mailbox may be compromised or the address spoofed. Call your contact at the supplier on a number you already have from the contract or earlier invoices, not one in the message. Record who confirmed it and when."}, "simulation": {"language": "fi", "facts": {"payment_status": "Lasku on vielä maksamatta, eräpäivä on perjantaina.", "business_access": "Minä ja kirjanpitäjä hyväksymme maksut."}, "unknown_reply": "En ole varma. En osaa sanoa.", "consent_policy": "grant", "consent_reply": "Joo, saat katsoa.", "max_assistant_turns": 6}, "profile": {"name": "Kari (58)", "role": "Managing Director (Puutavara Partner)", "tech": "Medium Confidence", "story": "Received an email from a trusted supplier stating their bank account has changed for an upcoming 4,750 € invoice payment."}}];
-  renderSidebar();
-  selectCase(0);
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.innerText = text;
+  return div.innerHTML;
 }
 
-function renderSidebar() {
-  const list = document.getElementById("journeyList");
-  list.innerHTML = "";
-  casesData.forEach((c, i) => {
-    const item = document.createElement("div");
-    item.className = "journey-item" + (i === currentIndex ? " active" : "");
-    item.onclick = () => selectCase(i);
-    item.innerHTML = `
-      <div class="journey-title">${c.title || c.journey}</div>
-      <div class="journey-meta">
-        <span>${c.journey}</span>
-        <span>${c.case_id}</span>
-      </div>
-    `;
-    list.appendChild(item);
-  });
+function fillInput(text) {
+  const inp = document.getElementById("userMsgInput");
+  inp.value = text;
+  inp.focus();
 }
 
-function selectCase(index) {
-  currentIndex = index;
-  renderSidebar();
-  resetCurrentCase();
+function clearFeed() {
+  const feed = document.getElementById("chatFeed");
+  feed.innerHTML = "";
 }
 
-async function resetCurrentCase() {
-  const c = casesData[currentIndex];
-  isFinished = false;
+function startNewSession() {
   activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
-  
-  const btnNext = document.getElementById("btnNext");
-  if (c.case_id === "CUSTOM-CHAT") {
-    btnNext.style.display = "none";
-  } else {
-    btnNext.style.display = "inline-block";
-    btnNext.disabled = false;
-    btnNext.innerText = "Preset Turn ⏭";
-  }
-  
-  // Update persona banner
-  const prof = c.profile || {};
-  document.getElementById("personaName").innerText = `${prof.name} — ${prof.role}`;
-  document.getElementById("personaStory").innerText = prof.story;
-  document.getElementById("avatarText").innerText = c.case_id === "CUSTOM-CHAT" ? "💬" : (prof.name || "U")[0];
-  
-  // Render Telemetry
-  const pills = document.getElementById("telemetryPills");
-  pills.innerHTML = "";
-  const dev = c.signals?.device?.summary || {};
-  const sub = c.signals?.subscription?.network_status?.service || "normal";
-  const linkVerdict = c.signals?.link_check?.verdict;
-  
-  pills.innerHTML += `<div class="pill">OS: ${dev.platform || 'mobile'} (${dev.os_version || 'Live'})</div>`;
-  if (sub === "no_service") {
-    pills.innerHTML += `<div class="pill alert">⚠ No Service</div>`;
-  } else {
-    pills.innerHTML += `<div class="pill safe">Network: ${sub}</div>`;
-  }
-  if (linkVerdict === "malicious") {
-    pills.innerHTML += `<div class="pill alert">⚠ Malicious Link</div>`;
-  }
-  
-  // Reset server state
-  await fetch("/api/reset", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({case_id: c.case_id})
-  });
-  
-  // Render opening message
+  sessionState = { turn: 0, pendingQuestion: null };
   const feed = document.getElementById("chatFeed");
   feed.innerHTML = `
     <div class="msg-row assistant">
-      <div class="msg-bubble">${escapeHtml(c.opening_message)}</div>
+      <div class="msg-bubble">
+        <div style="font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--dna-dark);">
+          ✨ New Session Started
+        </div>
+        <p style="color: #475569; font-size: 13.5px;">
+          Session reset. What security question or suspicious message can I assist you with?
+        </p>
+      </div>
     </div>
   `;
+  document.getElementById("userMsgInput").value = "";
   document.getElementById("userMsgInput").focus();
 }
 
-async function sendCustomMessage() {
+function detectLanguage(text) {
+  const t = text.toLowerCase();
+  if (/\b(jag|har|inte|och|på|det|som|med|ett|till|är|ringde|kod|någon)\b/.test(t)) return "sv";
+  if (/\b(the|is|and|to|in|of|my|have|has|what|should|scam|call|link|bank|password|friend)\b/.test(t)) return "en";
+  return "fi";
+}
+
+async function sendMessage() {
+  if (isBusy) return;
   const inp = document.getElementById("userMsgInput");
   const msg = inp.value.trim();
   if (!msg) return;
   inp.value = "";
-  
+
   const feed = document.getElementById("chatFeed");
+
   feed.innerHTML += `
     <div class="msg-row user">
       <div class="msg-bubble">${escapeHtml(msg)}</div>
     </div>
   `;
   feed.scrollTop = feed.scrollHeight;
-  
-  // Call /api/chat
-  const resp = await fetch("/api/chat", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({session_id: activeSessionId, message: msg})
-  });
-  const data = await resp.json();
-  
+
+  isBusy = true;
+  const btnSend = document.getElementById("btnSend");
+  btnSend.innerHTML = `<span class="spinner"></span> Analyzing...`;
+  btnSend.disabled = true;
+
+  try {
+    // Try online server first
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({session_id: activeSessionId, message: msg})
+    });
+    if (resp.ok) {
+      const data = await resp.json();
+      renderAssistantResponse(data);
+      return;
+    }
+  } catch (e) {
+    // Fallback to client-side decision engine for offline demo.html
+  }
+
+  // Client-side offline evaluation engine
+  setTimeout(() => {
+    const data = evaluateClientSide(msg);
+    renderAssistantResponse(data);
+    isBusy = false;
+    btnSend.innerHTML = `<span>Send Question</span> &#10140;`;
+    btnSend.disabled = false;
+    feed.scrollTop = feed.scrollHeight;
+    inp.focus();
+  }, 400);
+}
+
+function evaluateClientSide(msg) {
+  const t = msg.toLowerCase();
+  const lang = detectLanguage(msg);
+
+  // Check if answering pending question
+  if (sessionState.pendingQuestion) {
+    sessionState.pendingQuestion = null;
+    const isYes = /kyllä|joo|olen|syötin|annoin|maksoin|yes|did|gave|paid|ja/.test(t);
+    if (isYes) {
+      return {
+        reply_type: "final",
+        user_language: lang,
+        text: lang === "sv" 
+          ? "Kontakta din bank omedelbart på numret på baksidan av kortet. Dela aldrig koder i telefon." 
+          : lang === "fi" 
+          ? "Ota heti yhteyttä pankkiisi kortin kääntöpuolella olevaan numeroon. Älä kerro koodia puhelimessa." 
+          : "Contact your bank immediately on the number on the back of your card. Never share codes over the phone.",
+        text_en: "Contact your bank immediately on the number on the back of your card. Never share codes over the phone. Acting fast stops unauthorized charges.",
+        steps_primary: lang === "sv"
+          ? ["Kontakta din bank omedelbart på numret på baksidan av kortet.", "Spärra kortet via din bank omedelbart."]
+          : lang === "fi"
+          ? ["Ota heti yhteyttä pankkiisi kortin kääntöpuolella olevaan numeroon.", "Sulje kortti pankkisi virallisen sovelluksen kautta välittömästi."]
+          : ["Contact your bank immediately on the number on the back of your card.", "Block the card through your bank immediately."],
+        steps_en: ["Contact your bank immediately on the number on the back of your card.", "Block the card through your bank immediately."],
+        decision: {
+          primary_action: "contact_bank_and_block_cards",
+          risk_level: "critical",
+          urgency: "immediate",
+          escalation_required: true,
+          escalation_target: "security_specialist",
+          citations: ["guidance_bank_verification", "guidance_one_time_codes"]
+        },
+        rag_docs: [
+          {
+            title_primary: lang === "fi" ? "Pankin nimissä tulleen viestin tarkistaminen" : "Checking a message that claims to be from a bank",
+            excerpt_primary: "Jos olet jo syöttänyt pankkitunnuksesi tai antanut koodeja, ota heti yhteyttä pankkiin.",
+            title_en: "Checking a message that claims to be from a bank",
+            excerpt_en: "If you have already entered credentials or shared codes, contact your bank immediately."
+          }
+        ]
+      };
+    } else {
+      return {
+        reply_type: "final",
+        user_language: lang,
+        text: lang === "sv"
+          ? "Öppna inte länken och överför inte pengar innan du har kontrollerat saken. Kontrollera i den officiella appen."
+          : lang === "fi"
+          ? "Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu. Tarkista asia virallisesta sovelluksesta."
+          : "Do not open the link and do not transfer money before verifying. Check the matter in the official app.",
+        text_en: "Do not open the link and do not transfer money before verifying. Check the matter in the official app or call on a number you already know.",
+        steps_primary: lang === "sv"
+          ? ["Kontrollera saken i den officiella appen eller på organisationens egen webbplats."]
+          : lang === "fi"
+          ? ["Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta."]
+          : ["Check the matter in the official app or on the organisation's own website."],
+        steps_en: ["Check the matter in the official app or on the organisation's own website."],
+        decision: {
+          primary_action: "verify_via_official_channel",
+          risk_level: "medium",
+          urgency: "today",
+          escalation_required: false,
+          escalation_target: null,
+          citations: ["guidance_smishing_basics"]
+        },
+        rag_docs: [
+          {
+            title_primary: "Recognising a scam message",
+            excerpt_primary: "Banks and operators never ask for passwords or one-time codes over message or phone.",
+            title_en: "Recognising a scam message",
+            excerpt_en: "Banks and operators never ask for passwords or one-time codes over message or phone."
+          }
+        ]
+      };
+    }
+  }
+
+  // Operator call or asking for code -> decisive question
+  if (/operaattor|operator|operatör|koodi|code|kod/.test(t) && /soitti|call|ringde|pyysi|bad om/.test(t)) {
+    sessionState.pendingQuestion = "code_shared";
+    return {
+      reply_type: "question",
+      user_language: lang,
+      text: lang === "sv" ? "Gav du uppringaren någon kod?" : lang === "fi" ? "Kerroitko soittajalle jonkin koodin?" : "Did you give the caller any code?",
+      text_en: "Did you give the caller any code?",
+      rag_docs: [
+        {
+          title_primary: lang === "fi" ? "Viestit ja puhelut operaattorisi nimissä" : "Messages and calls in the name of your operator",
+          excerpt_primary: "Operaattori ei pyydä sinua lukemaan sille juuri lähettämäänsä koodia eikä kysy pankkitunnuksiasi.",
+          title_en: "Messages and calls in the name of your operator",
+          excerpt_en: "An operator does not ask you to read out a code it has just sent you, and does not ask for your bank credentials."
+        }
+      ]
+    };
+  }
+
+  // eSIM swap / No service
+  if (/esim|ei kenttää|no service|tuntematon sim/.test(t)) {
+    sessionState.pendingQuestion = "self_initiated";
+    return {
+      reply_type: "question",
+      user_language: lang,
+      text: lang === "sv" ? "Beställde eller gjorde du ändringen själv?" : lang === "fi" ? "Tilasitko tai teitkö tämän muutoksen itse?" : "Did you order or make this change yourself?",
+      text_en: "Did you order or make this change yourself?",
+      rag_docs: [
+        {
+          title_primary: "SIM swap and eSIM hijacking",
+          excerpt_primary: "Sudden loss of service plus an unrequested eSIM notification indicates an active SIM swap attack.",
+          title_en: "SIM swap and eSIM hijacking",
+          excerpt_en: "Sudden loss of service plus an unrequested eSIM notification indicates an active SIM swap attack."
+        }
+      ]
+    };
+  }
+
+  // Parcel scam
+  if (/posti|paketti|parcel|postnord|tulli|customs|delivery fee|2\.90/.test(t)) {
+    return {
+      reply_type: "final",
+      user_language: lang,
+      text: lang === "sv"
+        ? "Öppna inte länken och svara inte på meddelandet. Detta är ett vanligt bedrägeri som försöker stjäla uppgifter. Radera meddelandet från din enhet."
+        : lang === "fi"
+        ? "Älä avaa linkkiä äläkä vastaa viestiin. Tämä on tyypillinen huijausviesti, jolla kalastellaan tietoja tai rahaa. Poista viesti laitteestasi."
+        : "Do not open the link and do not reply to the message. This is a common scam designed to steal money or details. Delete the message from your device.",
+      text_en: "Do not open the link and do not reply to the message. This is a common scam designed to steal money or details. Delete the message from your device.",
+      steps_primary: lang === "sv" 
+        ? ["Öppna inte länken och logga inte in via den.", "Radera meddelandet eller rapportera det som skräppost."]
+        : lang === "fi"
+        ? ["Älä avaa linkkiä äläkä kirjaudu sen kautta.", "Poista viesti tai ilmoita se roskapostiksi."]
+        : ["Do not open the link or enter details through it.", "Delete the message or report it as spam."],
+      steps_en: ["Do not open the link or enter details through it.", "Delete the message or report it as spam."],
+      decision: {
+        primary_action: "do_not_interact_and_delete",
+        risk_level: "high",
+        urgency: "today",
+        escalation_required: false,
+        escalation_target: null,
+        citations: ["guidance_parcel_scam", "guidance_smishing_basics"]
+      },
+      rag_docs: [
+        {
+          title_primary: lang === "fi" ? "Paketti- ja tullimaksuviestit" : "Parcel and customs fee messages",
+          excerpt_primary: "Seuraa pakettia kuljetusyhtiön omassa sovelluksessa tai verkkosivuilla, jotka avaat itse, äläkä käytä linkkiä.",
+          title_en: "Parcel and customs fee messages",
+          excerpt_en: "Track the parcel in the delivery company's own app or website, opened yourself, and ignore the link."
+        }
+      ]
+    };
+  }
+
+  // Default: Friend/Family password request or general advice
+  return {
+    reply_type: "final",
+    user_language: lang,
+    text: lang === "sv"
+      ? "Öppna inte länken och överför inte pengar innan du har kontrollerat saken. Kontrollera i den officiella appen eller ring på ett känt nummer. Bedragare kan förfalska avsändarnamnet."
+      : lang === "fi"
+      ? "Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu. Tarkista asia virallisesta sovelluksesta tai soita organisaation omalle tutulle numerolle. Huijarit voivat väärentää lähettäjän nimen näkymään aidossa ketjussa."
+      : "Do not open the link and do not transfer money before verifying. Check the matter in the official app or call on a number you already know. Scammers can fake the sender name to appear in real threads.",
+    text_en: "Do not open the link and do not transfer money before verifying. Check the matter in the official app or call on a number you already know. Scammers can fake the sender name to appear in real threads.",
+    steps_primary: lang === "sv"
+      ? ["Dela aldrig koder eller PIN-koder med någon.", "Ring avsändaren på ett telefonnummer du redan känner till."]
+      : lang === "fi"
+      ? ["Älä kerro koodia kenellekään puhelimessa tai viestillä.", "Soita lähettäjälle numeroon, jonka tiedät jo entuudestaan."]
+      : ["Never share codes or PINs with anyone over the phone.", "Call the sender on a phone number you already know."],
+    steps_en: ["Never share codes or PINs with anyone over the phone.", "Call the sender on a phone number you already know."],
+    decision: {
+      primary_action: "verify_via_official_channel",
+      risk_level: "high",
+      urgency: "today",
+      escalation_required: false,
+      escalation_target: null,
+      citations: ["guidance_family_new_number", "guidance_credential_compromise"]
+    },
+    rag_docs: [
+      {
+        title_primary: "'Hi Mum, this is my new number'",
+        excerpt_primary: "Call the contact on the phone number you already know. Do not send codes or passwords before speaking to them directly.",
+        title_en: "'Hi Mum, this is my new number'",
+        excerpt_en: "Call the contact on the phone number you already know. Do not send codes or passwords before speaking to them directly."
+      }
+    ]
+  };
+}
+
+function renderAssistantResponse(data) {
+  const feed = document.getElementById("chatFeed");
+  const lang = data.user_language || "fi";
+  const langName = lang === "sv" ? "Swedish / Svenska" : lang === "fi" ? "Finnish / Suomi" : "English";
+  const badgeClass = lang === "sv" ? "badge-sv" : lang === "fi" ? "badge-fi" : "badge-en";
+
   let ragHtml = "";
   if (data.rag_docs && data.rag_docs.length > 0) {
-    ragHtml = `<div class="rag-container">
-      <div class="rag-header">&#128214; Perustuu DNA:n viralliseen tietoturvaohjeistukseen (RAG):</div>` +
-      data.rag_docs.map(d => `<div class="rag-card"><div class="rag-title">${escapeHtml(d.title)}</div><div class="rag-excerpt">${escapeHtml(d.excerpt)}</div></div>`).join("") +
-      `</div>`;
+    ragHtml = `
+      <div class="rag-panel">
+        <div class="rag-panel-title">&#128214; Official DNA Security Guidance Grounding (BM25 RAG):</div>
+        ${data.rag_docs.map(d => `
+          <div class="rag-item">
+            <div class="rag-item-title">${escapeHtml(d.title_primary || d.title_en)}</div>
+            <div class="rag-item-excerpt">${escapeHtml(d.excerpt_primary || d.excerpt_en)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
   }
-  
+
   if (data.reply_type === "question") {
+    let cardContent = "";
+    if (lang === "en") {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge badge-question">Decisive Question &bull; English</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+        </div>
+      `;
+    } else {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge ${badgeClass}">${langName}</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+        </div>
+        <div class="lang-card translation">
+          <span class="lang-badge badge-en">English Translation</span>
+          <div class="card-text">${escapeHtml(data.text_en || data.text)}</div>
+        </div>
+      `;
+    }
+
     feed.innerHTML += `
       <div class="msg-row assistant">
         <div class="msg-bubble">
-          <div class="badge-tag badge-question">Tarkentava Kysymys</div><br>
-          <strong>${escapeHtml(data.text)}</strong>
+          <div style="font-size: 11px; font-weight: 800; color: #BE185D; text-transform: uppercase; margin-bottom: 6px;">
+            ⚠️ Decisive Clarification Needed to Complete Journey
+          </div>
+          ${cardContent}
           ${ragHtml}
         </div>
       </div>
@@ -272,127 +654,69 @@ async function sendCustomMessage() {
   } else if (data.reply_type === "final") {
     const ans = data.decision || {};
     const risk = ans.risk_level || "medium";
-    let escHtml = ans.escalation_required 
-      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required &#10140; ${ans.escalation_target}</span>`
-      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
+    const urgency = ans.urgency || "today";
 
-    let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
-    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
-    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
+    let escHtml = ans.escalation_required 
+      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required &#10140; ${escapeHtml(ans.escalation_target)}</span>`
+      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution (No escalation needed)</span>`;
+
+    const stepsPrimary = (data.steps_primary && data.steps_primary.length > 0) ? data.steps_primary : (ans.steps || []);
+    const stepsEn = (data.steps_en && data.steps_en.length > 0) ? data.steps_en : [];
+
+    let stepsPrimaryHtml = stepsPrimary.map(s => `<li>${escapeHtml(s)}</li>`).join("");
+    let stepsEnHtml = stepsEn.map(s => `<li>${escapeHtml(s)}</li>`).join("");
+
+    let cardContent = "";
+    if (lang === "en") {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge badge-final">Action-First Advice &bull; English</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+          <ul class="card-steps">${stepsPrimaryHtml}</ul>
+        </div>
+      `;
+    } else {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge ${badgeClass}">${langName} (Alkuperäinen)</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+          <ul class="card-steps">${stepsPrimaryHtml}</ul>
+        </div>
+        <div class="lang-card translation">
+          <span class="lang-badge badge-en">English Translation</span>
+          <div class="card-text">${escapeHtml(data.text_en || data.text)}</div>
+          <ul class="card-steps">${stepsEnHtml}</ul>
+        </div>
+      `;
+    }
 
     feed.innerHTML += `
       <div class="msg-row assistant">
         <div class="msg-bubble">
-          <div class="badge-tag badge-final">Toimintaohje</div><br>
-          <strong>${escapeHtml(ans.advice_text || data.text)}</strong>
-          
-          <div class="decision-card">
-            <div class="card-header">
-              <span class="card-title">Security Decision Record</span>
-              <span class="risk-badge risk-${risk}">${risk}</span>
+          ${cardContent}
+
+          <div class="decision-box">
+            <div class="decision-header">
+              <span class="decision-title">Security Decision Record</span>
+              <span class="risk-tag risk-${risk}">Risk: ${risk.toUpperCase()}</span>
             </div>
-            <div><strong>Primary Action:</strong> <code>${ans.primary_action}</code></div>
-            <div style="margin-top: 4px;"><strong>Escalation:</strong> ${escHtml}</div>
-            <div style="margin-top: 8px;"><strong>Actionable Steps:</strong></div>
-            <ul class="step-list">${stepsHtml}</ul>
-            <div class="audit-tags">
-              ${citationsHtml}
-              ${signalsHtml}
+            <div class="decision-row">
+              <strong>Primary Action:</strong> <code class="action-code">${ans.primary_action || "verify_via_official_channel"}</code>
+            </div>
+            <div class="decision-row">
+              <strong>Urgency Rating:</strong> <span style="text-transform: capitalize;">${urgency}</span>
+            </div>
+            <div class="decision-row">
+              <strong>Specialist Escalation:</strong> ${escHtml}
             </div>
           </div>
+
           ${ragHtml}
         </div>
       </div>
     `;
   }
-  feed.scrollTop = feed.scrollHeight;
 }
-
-async function nextTurn() {
-  if (isFinished) return;
-  const c = casesData[currentIndex];
-  const resp = await fetch("/api/step", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({case_id: c.case_id})
-  });
-  const data = await resp.json();
-  
-  const feed = document.getElementById("chatFeed");
-  
-  if (data.reply_type === "consent_request") {
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-consent">Consent Request</div><br>
-          ${escapeHtml(data.reply_text)}
-        </div>
-      </div>
-      <div class="msg-row user">
-        <div class="msg-bubble">${escapeHtml(data.sim_user_text)}</div>
-      </div>
-    `;
-  } else if (data.reply_type === "question") {
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-question">Decisive Question</div><br>
-          ${escapeHtml(data.reply_text)}
-        </div>
-      </div>
-      <div class="msg-row user">
-        <div class="msg-bubble">${escapeHtml(data.sim_user_text)}</div>
-      </div>
-    `;
-  } else if (data.reply_type === "final") {
-    isFinished = true;
-    document.getElementById("btnNext").disabled = true;
-    document.getElementById("btnNext").innerText = "Journey Complete";
-    const ans = data.final_answer || {};
-    const risk = ans.risk_level || "medium";
-    
-    let escHtml = ans.escalation_required 
-      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required → ${ans.escalation_target}</span>`
-      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
-
-    let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
-    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
-    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
-
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-final">Action-First Advice</div><br>
-          <strong>${escapeHtml(ans.advice_text)}</strong>
-          
-          <div class="decision-card">
-            <div class="card-header">
-              <span class="card-title">Security Decision Record</span>
-              <span class="risk-badge risk-${risk}">${risk}</span>
-            </div>
-            <div><strong>Primary Action:</strong> <code>${ans.primary_action}</code></div>
-            <div style="margin-top: 4px;"><strong>Escalation:</strong> ${escHtml}</div>
-            <div style="margin-top: 8px;"><strong>Actionable Steps:</strong></div>
-            <ul class="step-list">${stepsHtml}</ul>
-            <div class="audit-tags">
-              ${citationsHtml}
-              ${signalsHtml}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  feed.scrollTop = feed.scrollHeight;
-}
-
-function escapeHtml(text) {
-  if (!text) return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-loadCases();
 </script>
-
 </body>
 </html>

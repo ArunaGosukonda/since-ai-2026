@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
-"""Interactive Demo & Live Chatbot UI for Since AI — DNA Digital Security Assistant.
+"""Interactive Plain Window Chatbot UI for Since AI — DNA Digital Security Assistant.
 
-Supports:
-  1. Live Interactive Chatbot (RAG Grounded over 56 Official DNA Guidance Articles).
-  2. 5 Canonical Security Journeys from data/samples/five_journeys.jsonl.
-  3. Terminal CLI walkthrough mode: python3 src/application/demo_ui.py --cli
-  4. Web Server mode: python3 src/application/demo_ui.py --port 8080
+Features:
+  1. Plain window dedicated chat interface with zero preset test cases.
+  2. Free-form question input supporting any arbitrary cybersecurity scenario.
+  3. Interactive multi-turn journey completion (decisive questions + final advice).
+  4. Trilingual input support: Finnish, Swedish, English.
+  5. Bilingual response presentation:
+     - Finnish input -> Finnish response + Translated English response.
+     - Swedish input -> Swedish response + Translated English response.
+     - English input -> English response.
+  6. All buttons and UI controls in English.
+  7. BM25 RAG Grounding over 56 official DNA guidance articles.
 """
 import argparse
-import copy
 import http.server
 import json
 import os
@@ -19,147 +24,20 @@ from typing import Any, Dict, List
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 sys.path.insert(0, ROOT)
 
-from dsakit.scoring import load_jsonl
-from dsakit.simulator import UserSimulator, visible_case
-from src.conversation.bot_adapter import step as bot_step
 from src.conversation.live_chatbot import LiveChatbot
 
-SAMPLE_CASES_PATH = os.path.join(ROOT, "data/samples/five_journeys.jsonl")
-
-PERSONA_PROFILES = {
-    "CUSTOM-CHAT": {
-        "name": "Sinä (Käyttäjä)",
-        "role": "DNA Asiakas / Yrityskäyttäjä",
-        "tech": "Vapaa Kysely",
-        "story": "Kirjoita mikä tahansa epäilyttävä viesti, puhelu, linkki tai tietoturvatilanne alla olevaan kenttään."
-    },
-    "DSA-D-0056": {
-        "name": "Pentti (52)",
-        "role": "Micro-business Owner (Salon Saksi & Kampa)",
-        "tech": "Medium Confidence",
-        "story": "Received an urgent SMS claiming his bank account is locked, appearing inside the bank's real message thread."
-    },
-    "DSA-D-0105": {
-        "name": "Marjatta (68)",
-        "role": "Senior Consumer",
-        "tech": "Low Tech Confidence",
-        "story": "Installed a voicemail app from an SMS link and gave it accessibility permissions. The phone is now behaving erratically."
-    },
-    "DSA-D-0160": {
-        "name": "Jari (44)",
-        "role": "Parent & DNA Mobile Subscriber",
-        "tech": "High Tech Confidence",
-        "story": "Received a phone call from someone claiming to be DNA customer service offering a 5G upgrade and demanding an SMS code."
-    },
-    "DSA-D-0337": {
-        "name": "Leena (39)",
-        "role": "Consumer Subscriber",
-        "tech": "Medium Confidence",
-        "story": "Phone suddenly lost network signal completely ('No Service') right after receiving an unexpected eSIM activation notice."
-    },
-    "DSA-D-0018": {
-        "name": "Kari (58)",
-        "role": "Managing Director (Puutavara Partner)",
-        "tech": "Medium Confidence",
-        "story": "Received an email from a trusted supplier stating their bank account has changed for an upcoming 4,750 € invoice payment."
-    }
-}
-
-
-def run_cli_demo(cases: List[Dict[str, Any]]):
-    """Executes all canonical journeys sequentially in rich terminal format."""
-    print("=" * 80)
-    print("  SINCE AI — DNA DIGITAL SECURITY ASSISTANT")
-    print("  Interactive Multi-Turn Demonstration across 5 Canonical Journeys")
-    print("=" * 80)
-
-    for idx, case in enumerate(cases, 1):
-        cid = case["case_id"]
-        profile = PERSONA_PROFILES.get(cid, {
-            "name": case.get("persona", {}).get("segment", "Subscriber"),
-            "role": case.get("audience", "consumer"),
-            "tech": "Standard",
-            "story": case.get("title", "")
-        })
-
-        print(f"\n[{idx}/5] JOURNEY: {case['journey'].upper()} ({cid})")
-        print(f"     Persona: {profile['name']} | {profile['role']} | Confidence: {profile['tech']}")
-        print(f"     Context: {profile['story']}")
-        print("-" * 80)
-
-        sim = UserSimulator(case)
-        state: Dict[str, Any] = {}
-        event: Dict[str, Any] = {
-            "type": "start",
-            "conversation_id": cid,
-            "case": visible_case(case),
-            "max_assistant_turns": 6
-        }
-
-        turn = 0
-        final_answer = None
-
-        while turn < 6:
-            reply = bot_step(event, state)
-            rtype = reply.get("type")
-
-            if rtype == "consent_request":
-                fields = ", ".join(reply.get("fields", []))
-                print(f"  🤖 DNA Assistant [Consent Request]:")
-                print(f"     \"{reply.get('text')}\"")
-                print(f"     (Requested telemetry signals: {fields})")
-                c = sim.consent(reply.get("fields", []))
-                granted = ", ".join(c["granted"]) if c["granted"] else "None"
-                refused = ", ".join(c["refused"]) if c["refused"] else "None"
-                print(f"  👤 User [{profile['name']}]:")
-                print(f"     \"{c['text']}\" (Granted: {granted} | Refused: {refused})\n")
-                event = {
-                    "type": "consent_reply",
-                    "granted": c["granted"],
-                    "refused": c["refused"],
-                    "text": c["text"],
-                    "signals": c.get("signals", {})
-                }
-
-            elif rtype == "question":
-                topics = ", ".join(reply.get("topics", []))
-                print(f"  🤖 DNA Assistant [Decisive Question]:")
-                print(f"     \"{reply.get('text')}\" (Topics: {topics})")
-                ans = sim.answer(reply.get("text", ""), reply.get("topics"))
-                print(f"  👤 User [{profile['name']}]:")
-                print(f"     \"{ans}\"\n")
-                event = {"type": "user_reply", "text": ans}
-
-            elif rtype == "final":
-                final_answer = reply.get("answer", {})
-                print(f"  🤖 DNA Assistant [Final Safety Advice]:")
-                print(f"     \"{final_answer.get('advice_text')}\"")
-                break
-
-            turn += 1
-
-        if final_answer:
-            print("\n  🛡️  SAFETY DECISION SUMMARY:")
-            print(f"     • Action:      {final_answer.get('primary_action')}")
-            print(f"     • Risk Level:  {final_answer.get('risk_level', '').upper()} (Urgency: {final_answer.get('urgency')})")
-            print(f"     • Escalation:  {'YES -> ' + str(final_answer.get('escalation_target')) if final_answer.get('escalation_required') else 'None (Handled safely autonomously)'}")
-            print(f"     • Steps:       {json.dumps(final_answer.get('steps', []), ensure_ascii=False)}")
-            print(f"     • Signals:     {', '.join(final_answer.get('signals_used', []))}")
-            print(f"     • Citations:   {', '.join(final_answer.get('citations', []))}")
-        print("=" * 80)
-
-
 HTML_TEMPLATE = """<!DOCTYPE html>
-<html lang="fi">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Since AI — DNA Digital Security Assistant</title>
+<title>DNA Digital Security Assistant — Live Chat</title>
 <style>
   :root {
     --dna-pink: #EA0066;
+    --dna-pink-hover: #D0005B;
     --dna-dark: #1E1E24;
-    --dna-light: #F4F5F7;
+    --dna-light: #F4F6F9;
     --dna-card: #FFFFFF;
     --dna-border: #E2E8F0;
     --text-primary: #0F172A;
@@ -171,412 +49,541 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     --risk-none: #3B82F6;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body { background: var(--dna-light); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; }
-  header { background: var(--dna-dark); color: white; padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid var(--dna-pink); }
-  .logo-area { display: flex; align-items: center; gap: 12px; }
-  .logo-badge { background: var(--dna-pink); color: white; font-weight: 800; font-size: 15px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
-  .header-title { font-size: 18px; font-weight: 600; }
-  .header-subtitle { font-size: 13px; color: #94A3B8; }
+  body { background: var(--dna-light); color: var(--text-primary); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
   
-  .layout { display: flex; flex: 1; overflow: hidden; }
+  /* Top Navigation */
+  header {
+    background: var(--dna-dark);
+    color: white;
+    padding: 14px 28px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid var(--dna-pink);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .header-left { display: flex; align-items: center; gap: 14px; }
+  .logo-badge { background: var(--dna-pink); color: white; font-weight: 900; font-size: 15px; padding: 4px 10px; border-radius: 6px; letter-spacing: 1px; }
+  .header-titles h1 { font-size: 18px; font-weight: 700; color: white; margin-bottom: 2px; }
+  .header-titles p { font-size: 12px; color: #94A3B8; }
   
-  /* Sidebar */
-  .sidebar { width: 340px; background: white; border-right: 1px solid var(--dna-border); display: flex; flex-direction: column; }
-  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--dna-border); font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
-  .journey-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .journey-item { padding: 12px; border-radius: 8px; border: 1px solid var(--dna-border); cursor: pointer; transition: all 0.15s ease; background: white; }
-  .journey-item:hover { border-color: var(--dna-pink); background: #FFF5F8; }
-  .journey-item.active { border-color: var(--dna-pink); background: #FFF0F5; box-shadow: 0 2px 6px rgba(234,0,102,0.12); }
-  .journey-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
-  .journey-meta { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: flex; justify-content: space-between; }
+  .header-actions { display: flex; gap: 10px; align-items: center; }
+  .btn-header {
+    background: rgba(255,255,255,0.12);
+    color: white;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 7px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+  .btn-header:hover { background: rgba(255,255,255,0.22); }
   
-  /* Main Chat Area */
-  .main-area { flex: 1; display: flex; flex-direction: column; background: #F8FAFC; }
-  .persona-banner { background: white; border-bottom: 1px solid var(--dna-border); padding: 14px 24px; display: flex; align-items: center; justify-content: space-between; }
-  .persona-info { display: flex; align-items: center; gap: 14px; }
-  .persona-avatar { width: 44px; height: 44px; border-radius: 50%; background: #E0E7FF; color: #4338CA; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; }
-  .persona-details h3 { font-size: 15px; font-weight: 700; }
-  .persona-details p { font-size: 12px; color: var(--text-muted); }
-  .telemetry-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pill { font-size: 11px; padding: 4px 8px; border-radius: 12px; font-weight: 600; background: #F1F5F9; color: #475569; border: 1px solid #CBD5E1; }
-  .pill.alert { background: #FEE2E2; color: #991B1B; border-color: #F87171; }
-  .pill.safe { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
+  /* Main Container */
+  .chat-wrapper {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    max-width: 980px;
+    width: 100%;
+    margin: 0 auto;
+    background: white;
+    border-left: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    overflow: hidden;
+  }
   
-  .chat-feed { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
+  /* Quick Suggestion Chips */
+  .suggestions-bar {
+    padding: 10px 20px;
+    background: #F8FAFC;
+    border-bottom: 1px solid var(--dna-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .suggestions-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .chip {
+    background: white;
+    border: 1px solid #CBD5E1;
+    color: #334155;
+    padding: 5px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: var(--dna-pink); color: var(--dna-pink); background: #FFF5F8; }
+  
+  /* Chat Message Feed */
+  .chat-feed {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    background: #FAFBFC;
+  }
+  
   .msg-row { display: flex; width: 100%; gap: 12px; }
   .msg-row.user { justify-content: flex-end; }
-  .msg-bubble { max-width: 70%; padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
-  .msg-row.assistant .msg-bubble { background: white; border: 1px solid var(--dna-border); border-top-left-radius: 4px; }
-  .msg-row.user .msg-bubble { background: var(--dna-pink); color: white; border-top-right-radius: 4px; }
-  .msg-row.system .msg-bubble { background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; margin: 0 auto; max-width: 80%; border-radius: 8px; font-size: 13px; }
   
-  .badge-tag { display: inline-block; font-size: 10px; font-weight: 800; text-transform: uppercase; padding: 2px 6px; border-radius: 4px; margin-bottom: 6px; }
-  .badge-consent { background: #EFF6FF; color: #1D4ED8; border: 1px solid #BFDBFE; }
-  .badge-question { background: #FAF5FF; color: #7E22CE; border: 1px solid #E9D5FF; }
-  .badge-final { background: #ECFDF5; color: #047857; border: 1px solid #A7F3D0; }
+  .msg-bubble {
+    max-width: 82%;
+    padding: 16px 20px;
+    border-radius: 14px;
+    font-size: 14px;
+    line-height: 1.55;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+  }
   
-  /* Final Decision Card */
-  .decision-card { background: white; border: 2px solid var(--dna-pink); border-radius: 12px; padding: 18px; margin-top: 12px; box-shadow: 0 4px 12px rgba(234,0,102,0.1); }
-  .card-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--dna-border); padding-bottom: 10px; margin-bottom: 12px; }
-  .card-title { font-weight: 700; font-size: 15px; color: var(--dna-dark); }
-  .risk-badge { font-size: 12px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; color: white; }
+  .msg-row.user .msg-bubble {
+    background: var(--dna-pink);
+    color: white;
+    border-top-right-radius: 4px;
+    font-weight: 500;
+  }
+  
+  .msg-row.assistant .msg-bubble {
+    background: white;
+    border: 1px solid var(--dna-border);
+    border-top-left-radius: 4px;
+    width: 100%;
+  }
+  
+  /* Dual-Language Presentation Cards */
+  .lang-card {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+  }
+  .lang-card.primary {
+    background: #F8FAFC;
+    border-left: 4px solid var(--dna-pink);
+    border-top: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    border-bottom: 1px solid var(--dna-border);
+  }
+  .lang-card.translation {
+    background: #F1F5F9;
+    border-left: 4px solid #3B82F6;
+    border-top: 1px solid var(--dna-border);
+    border-right: 1px solid var(--dna-border);
+    border-bottom: 1px solid var(--dna-border);
+  }
+  .lang-badge {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    letter-spacing: 0.5px;
+  }
+  .badge-fi { background: #E0E7FF; color: #3730A3; }
+  .badge-sv { background: #FEF3C7; color: #92400E; }
+  .badge-en { background: #DBEAFE; color: #1E40AF; }
+  .badge-question { background: #FCE7F3; color: #BE185D; }
+  .badge-final { background: #DCFCE7; color: #15803D; }
+  
+  .card-text { font-size: 14.5px; color: var(--text-primary); font-weight: 600; line-height: 1.5; margin-bottom: 8px; }
+  .card-steps { margin-left: 18px; margin-top: 6px; font-size: 13.5px; color: #334155; }
+  .card-steps li { margin-bottom: 4px; }
+  
+  /* Security Decision Box */
+  .decision-box {
+    background: white;
+    border: 1.5px solid var(--dna-border);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 14px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .decision-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--dna-border);
+    padding-bottom: 10px;
+    margin-bottom: 12px;
+  }
+  .decision-title { font-weight: 700; font-size: 14px; color: var(--dna-dark); }
+  .risk-tag { font-size: 11px; font-weight: 800; padding: 4px 10px; border-radius: 6px; text-transform: uppercase; color: white; letter-spacing: 0.5px; }
   .risk-critical { background: var(--risk-critical); }
   .risk-high { background: var(--risk-high); }
   .risk-medium { background: var(--risk-medium); }
   .risk-low { background: var(--risk-low); }
   .risk-none { background: var(--risk-none); }
   
-  .step-list { margin: 10px 0; padding-left: 20px; font-size: 13px; line-height: 1.6; }
-  .audit-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--dna-border); }
-  .audit-pill { font-size: 10px; padding: 2px 6px; background: #F1F5F9; border-radius: 4px; color: #475569; }
+  .decision-row { font-size: 13px; margin-bottom: 6px; color: #334155; }
+  .decision-row strong { color: #0F172A; }
+  .action-code { background: #F1F5F9; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 12px; color: #0F172A; border: 1px solid #CBDE1; }
   
   /* RAG Grounding Cards */
-  .rag-container { margin-top: 10px; border-top: 1px dashed #CBD5E1; padding-top: 8px; }
-  .rag-header { font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; }
-  .rag-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 10px; margin-top: 4px; font-size: 12px; }
-  .rag-title { font-weight: 700; color: #1E293B; margin-bottom: 2px; }
-  .rag-excerpt { color: #64748B; font-size: 11px; }
-
-  /* Interactive Chat Input Bar */
-  .chat-input-bar { background: white; border-top: 1px solid var(--dna-border); padding: 14px 20px; display: flex; gap: 10px; align-items: center; }
-  .chat-input-box { flex: 1; padding: 12px 16px; border: 1.5px solid var(--dna-border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s; }
-  .chat-input-box:focus { border-color: var(--dna-pink); }
-  .btn { padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.15s ease; white-space: nowrap; }
+  .rag-panel { margin-top: 14px; border-top: 1px dashed #CBD5E1; padding-top: 10px; }
+  .rag-panel-title { font-size: 12px; font-weight: 700; color: #475569; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .rag-item {
+    background: #F8FAFC;
+    border: 1px solid #E2E8F0;
+    border-radius: 6px;
+    padding: 10px 12px;
+    margin-bottom: 6px;
+    font-size: 12.5px;
+  }
+  .rag-item-title { font-weight: 700; color: #1E293B; margin-bottom: 3px; }
+  .rag-item-excerpt { font-size: 12px; color: #64748B; line-height: 1.45; }
+  
+  /* Input Area */
+  .chat-input-area {
+    background: white;
+    border-top: 1px solid var(--dna-border);
+    padding: 16px 24px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+  }
+  .input-field {
+    flex: 1;
+    padding: 14px 18px;
+    border: 1.5px solid var(--dna-border);
+    border-radius: 8px;
+    font-size: 14.5px;
+    outline: none;
+    transition: all 0.2s ease;
+  }
+  .input-field:focus { border-color: var(--dna-pink); box-shadow: 0 0 0 3px rgba(234,0,102,0.1); }
+  
+  .btn {
+    padding: 13px 22px;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    border: none;
+    transition: background 0.15s ease;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
   .btn-primary { background: var(--dna-pink); color: white; }
-  .btn-primary:hover { background: #D0005B; }
+  .btn-primary:hover { background: var(--dna-pink-hover); }
   .btn-secondary { background: #E2E8F0; color: #334155; }
   .btn-secondary:hover { background: #CBD5E1; }
+  
+  .spinner {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo-area">
+  <div class="header-left">
     <div class="logo-badge">DNA</div>
-    <div>
-      <div class="header-title">Oma DNA — Digitaalinen Tietoturva-avustaja</div>
-      <div class="header-subtitle">RAG Grounded &bull; Multi-Turn Security Chatbot &bull; Zero Hallucinations</div>
+    <div class="header-titles">
+      <h1>DNA Digital Security Assistant</h1>
+      <p>Bilingual Responses (Finnish/Swedish + English) &bull; RAG Grounded &bull; Multi-Turn Security Resolution</p>
     </div>
   </div>
-  <div style="font-size: 12px; color: #94A3B8;">RAG: <strong>56 Articles</strong> | Pass: <strong>100.0%</strong> | Red-team: <strong>27/27 PASS</strong></div>
+  <div class="header-actions">
+    <button class="btn-header" onclick="startNewSession()">+ New Conversation</button>
+    <button class="btn-header" onclick="clearFeed()">Clear Chat</button>
+  </div>
 </header>
 
-<div class="layout">
-  <div class="sidebar">
-    <div class="sidebar-header">Valitse Tila / Presetit</div>
-    <div class="journey-list" id="journeyList"></div>
+<div class="chat-wrapper">
+  <!-- Suggestions Bar -->
+  <div class="suggestions-bar">
+    <span class="suggestions-label">Try an example:</span>
+    <button class="chip" onclick="fillInput('Sain tekstiviestin Postilta että paketti on pysäytetty ja pitää maksaa 2.90 euroa linkistä.')">📦 Posti Parcel Scam (FI)</button>
+    <button class="chip" onclick="fillInput('Någon ringde från operatören och bad om en bekräftelsekod.')">📞 Operator SIM Code Call (SV)</button>
+    <button class="chip" onclick="fillInput('My friend is asking for my password on WhatsApp. Should I send it?')">🔑 Friend Asking Password (EN)</button>
+    <button class="chip" onclick="fillInput('Puhelimessani luki Ei kenttää heti sen jälkeen kun tuli ilmoitus uudesta eSIM-kortista.')">📱 eSIM Swap / No Service (FI)</button>
+    <button class="chip" onclick="fillInput('Is it safe to share a password to a family member over the phone?')">🛡️ Family Password Share (EN)</button>
   </div>
-  
-  <div class="main-area">
-    <div class="persona-banner">
-      <div class="persona-info">
-        <div class="persona-avatar" id="avatarText">💬</div>
-        <div class="persona-details">
-          <h3 id="personaName">Oma Tietoturvabotti</h3>
-          <p id="personaStory">Kysy mistä tahansa tietoturva-asiasta</p>
+
+  <!-- Messages Feed -->
+  <div class="chat-feed" id="chatFeed">
+    <!-- Welcome Message -->
+    <div class="msg-row assistant">
+      <div class="msg-bubble">
+        <div style="font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--dna-dark);">
+          👋 Welcome to the DNA Digital Security Assistant
+        </div>
+        <p style="color: #475569; margin-bottom: 10px; font-size: 13.5px;">
+          You can ask about any suspicious SMS message, unexpected phone call, phishing link, login alert, or security question.
+        </p>
+        <div style="background: #EFF6FF; border: 1px solid #BFDBFE; border-radius: 6px; padding: 10px 14px; font-size: 12.5px; color: #1E40AF;">
+          <strong>Bilingual Support:</strong> If you write in <strong>Finnish</strong> or <strong>Swedish</strong>, you will automatically receive the answer in your chosen language plus a complete <strong>English Translation</strong>. You can also write directly in English.
         </div>
       </div>
-      <div class="telemetry-pills" id="telemetryPills"></div>
     </div>
-    
-    <div class="chat-feed" id="chatFeed"></div>
-    
-    <div class="chat-input-bar">
-      <input type="text" class="chat-input-box" id="userMsgInput" placeholder="Kirjoita kysymyksesi tai epäilyttävä viesti tähän ja paina Enter..." onkeydown="if(event.key==='Enter') sendCustomMessage()">
-      <button class="btn btn-primary" onclick="sendCustomMessage()">Lähetä &#10140;</button>
-      <button class="btn btn-secondary" id="btnNext" onclick="nextTurn()">Preset Turn &#9197;</button>
-      <button class="btn btn-secondary" onclick="resetCurrentCase()">Tyhjennä</button>
-    </div>
+  </div>
+
+  <!-- Input Area with English Buttons -->
+  <div class="chat-input-area">
+    <input type="text" class="input-field" id="userMsgInput" placeholder="Type your security question or paste a suspicious message here..." onkeydown="if(event.key==='Enter') sendMessage()">
+    <button class="btn btn-primary" id="btnSend" onclick="sendMessage()">
+      <span>Send Question</span> &#10140;
+    </button>
+    <button class="btn btn-secondary" onclick="startNewSession()">
+      New Conversation
+    </button>
   </div>
 </div>
 
 <script>
-let casesData = [];
-let currentIndex = 0;
-let isFinished = false;
 let activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
+let isBusy = false;
 
-async function loadCases() {
-  const resp = await fetch("/api/cases");
-  casesData = await resp.json();
-  renderSidebar();
-  selectCase(0);
+function escapeHtml(text) {
+  if (!text) return "";
+  const div = document.createElement("div");
+  div.innerText = text;
+  return div.innerHTML;
 }
 
-function renderSidebar() {
-  const list = document.getElementById("journeyList");
-  list.innerHTML = "";
-  casesData.forEach((c, i) => {
-    const item = document.createElement("div");
-    item.className = "journey-item" + (i === currentIndex ? " active" : "");
-    item.onclick = () => selectCase(i);
-    item.innerHTML = `
-      <div class="journey-title">${c.title || c.journey}</div>
-      <div class="journey-meta">
-        <span>${c.journey}</span>
-        <span>${c.case_id}</span>
-      </div>
-    `;
-    list.appendChild(item);
-  });
+function fillInput(text) {
+  const inp = document.getElementById("userMsgInput");
+  inp.value = text;
+  inp.focus();
 }
 
-function selectCase(index) {
-  currentIndex = index;
-  renderSidebar();
-  resetCurrentCase();
+function clearFeed() {
+  const feed = document.getElementById("chatFeed");
+  feed.innerHTML = "";
 }
 
-async function resetCurrentCase() {
-  const c = casesData[currentIndex];
-  isFinished = false;
+function startNewSession() {
   activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
-  
-  const btnNext = document.getElementById("btnNext");
-  if (c.case_id === "CUSTOM-CHAT") {
-    btnNext.style.display = "none";
-  } else {
-    btnNext.style.display = "inline-block";
-    btnNext.disabled = false;
-    btnNext.innerText = "Preset Turn \u23ED";
-  }
-  
-  // Update persona banner
-  const prof = c.profile || {};
-  document.getElementById("personaName").innerText = `${prof.name} — ${prof.role}`;
-  document.getElementById("personaStory").innerText = prof.story;
-  document.getElementById("avatarText").innerText = c.case_id === "CUSTOM-CHAT" ? "💬" : (prof.name || "U")[0];
-  
-  // Render Telemetry
-  const pills = document.getElementById("telemetryPills");
-  pills.innerHTML = "";
-  const dev = c.signals?.device?.summary || {};
-  const sub = c.signals?.subscription?.network_status?.service || "normal";
-  const linkVerdict = c.signals?.link_check?.verdict;
-  
-  pills.innerHTML += `<div class="pill">OS: ${dev.platform || 'mobile'} (${dev.os_version || 'Live'})</div>`;
-  if (sub === "no_service") {
-    pills.innerHTML += `<div class="pill alert">\u26A0 No Service</div>`;
-  } else {
-    pills.innerHTML += `<div class="pill safe">Network: ${sub}</div>`;
-  }
-  if (linkVerdict === "malicious") {
-    pills.innerHTML += `<div class="pill alert">\u26A0 Malicious Link</div>`;
-  }
-  
-  // Reset server state
-  await fetch("/api/reset", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({case_id: c.case_id})
-  });
-  
-  // Render opening message
   const feed = document.getElementById("chatFeed");
   feed.innerHTML = `
     <div class="msg-row assistant">
-      <div class="msg-bubble">${escapeHtml(c.opening_message)}</div>
+      <div class="msg-bubble">
+        <div style="font-weight: 700; font-size: 15px; margin-bottom: 6px; color: var(--dna-dark);">
+          ✨ New Session Started
+        </div>
+        <p style="color: #475569; font-size: 13.5px;">
+          Session reset. What security question or suspicious message can I assist you with?
+        </p>
+      </div>
     </div>
   `;
+  document.getElementById("userMsgInput").value = "";
   document.getElementById("userMsgInput").focus();
 }
 
-async function sendCustomMessage() {
+async function sendMessage() {
+  if (isBusy) return;
   const inp = document.getElementById("userMsgInput");
   const msg = inp.value.trim();
   if (!msg) return;
   inp.value = "";
-  
+
   const feed = document.getElementById("chatFeed");
+
+  // Append user bubble
   feed.innerHTML += `
     <div class="msg-row user">
       <div class="msg-bubble">${escapeHtml(msg)}</div>
     </div>
   `;
   feed.scrollTop = feed.scrollHeight;
-  
-  // Call /api/chat
-  const resp = await fetch("/api/chat", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({session_id: activeSessionId, message: msg})
-  });
-  const data = await resp.json();
-  
+
+  // Set loading state
+  isBusy = true;
+  const btnSend = document.getElementById("btnSend");
+  btnSend.innerHTML = `<span class="spinner"></span> Analyzing...`;
+  btnSend.disabled = true;
+
+  try {
+    const resp = await fetch("/api/chat", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({session_id: activeSessionId, message: msg})
+    });
+    const data = await resp.json();
+    renderAssistantResponse(data);
+  } catch (err) {
+    feed.innerHTML += `
+      <div class="msg-row assistant">
+        <div class="msg-bubble" style="border-left: 4px solid #EF4444; background: #FEF2F2;">
+          <strong style="color: #991B1B;">Connection Error:</strong> Could not reach the security assistant. Please ensure the server is running.
+        </div>
+      </div>
+    `;
+  } finally {
+    isBusy = false;
+    btnSend.innerHTML = `<span>Send Question</span> &#10140;`;
+    btnSend.disabled = false;
+    feed.scrollTop = feed.scrollHeight;
+    inp.focus();
+  }
+}
+
+function renderAssistantResponse(data) {
+  const feed = document.getElementById("chatFeed");
+  const lang = data.user_language || "fi";
+  const langName = lang === "sv" ? "Swedish / Svenska" : lang === "fi" ? "Finnish / Suomi" : "English";
+  const badgeClass = lang === "sv" ? "badge-sv" : lang === "fi" ? "badge-fi" : "badge-en";
+
+  // Build RAG Grounding Cards
   let ragHtml = "";
   if (data.rag_docs && data.rag_docs.length > 0) {
-    ragHtml = `<div class="rag-container">
-      <div class="rag-header">&#128214; Perustuu DNA:n viralliseen tietoturvaohjeistukseen (RAG):</div>` +
-      data.rag_docs.map(d => `<div class="rag-card"><div class="rag-title">${escapeHtml(d.title)}</div><div class="rag-excerpt">${escapeHtml(d.excerpt)}</div></div>`).join("") +
-      `</div>`;
+    ragHtml = `
+      <div class="rag-panel">
+        <div class="rag-panel-title">&#128214; Official DNA Security Guidance Grounding (BM25 RAG):</div>
+        ${data.rag_docs.map(d => `
+          <div class="rag-item">
+            <div class="rag-item-title">${escapeHtml(d.title_primary || d.title_en)}</div>
+            <div class="rag-item-excerpt">${escapeHtml(d.excerpt_primary || d.excerpt_en)}</div>
+          </div>
+        `).join("")}
+      </div>
+    `;
   }
-  
+
+  // 1. Decisive Question Response
   if (data.reply_type === "question") {
+    let cardContent = "";
+    if (lang === "en") {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge badge-question">Decisive Question &bull; English</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+        </div>
+      `;
+    } else {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge ${badgeClass}">${langName}</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+        </div>
+        <div class="lang-card translation">
+          <span class="lang-badge badge-en">English Translation</span>
+          <div class="card-text">${escapeHtml(data.text_en || data.text)}</div>
+        </div>
+      `;
+    }
+
     feed.innerHTML += `
       <div class="msg-row assistant">
         <div class="msg-bubble">
-          <div class="badge-tag badge-question">Tarkentava Kysymys</div><br>
-          <strong>${escapeHtml(data.text)}</strong>
+          <div style="font-size: 11px; font-weight: 800; color: #BE185D; text-transform: uppercase; margin-bottom: 6px;">
+            ⚠️ Decisive Clarification Needed to Complete Journey
+          </div>
+          ${cardContent}
           ${ragHtml}
         </div>
       </div>
     `;
-  } else if (data.reply_type === "final") {
+  }
+  // 2. Final Safety Decision & Advice
+  else if (data.reply_type === "final") {
     const ans = data.decision || {};
     const risk = ans.risk_level || "medium";
-    let escHtml = ans.escalation_required 
-      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required &#10140; ${ans.escalation_target}</span>`
-      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
+    const urgency = ans.urgency || "today";
 
-    let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
-    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
-    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
+    let escHtml = ans.escalation_required 
+      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required &#10140; ${escapeHtml(ans.escalation_target)}</span>`
+      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution (No escalation needed)</span>`;
+
+    // Actionable steps
+    const stepsPrimary = (data.steps_primary && data.steps_primary.length > 0) ? data.steps_primary : (ans.steps || []);
+    const stepsEn = (data.steps_en && data.steps_en.length > 0) ? data.steps_en : [];
+
+    let stepsPrimaryHtml = stepsPrimary.map(s => `<li>${escapeHtml(s)}</li>`).join("");
+    let stepsEnHtml = stepsEn.map(s => `<li>${escapeHtml(s)}</li>`).join("");
+
+    let cardContent = "";
+    if (lang === "en") {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge badge-final">Action-First Advice &bull; English</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+          <ul class="card-steps">${stepsPrimaryHtml}</ul>
+        </div>
+      `;
+    } else {
+      cardContent = `
+        <div class="lang-card primary">
+          <span class="lang-badge ${badgeClass}">${langName} (Alkuperäinen)</span>
+          <div class="card-text">${escapeHtml(data.text)}</div>
+          <ul class="card-steps">${stepsPrimaryHtml}</ul>
+        </div>
+        <div class="lang-card translation">
+          <span class="lang-badge badge-en">English Translation</span>
+          <div class="card-text">${escapeHtml(data.text_en || data.text)}</div>
+          <ul class="card-steps">${stepsEnHtml}</ul>
+        </div>
+      `;
+    }
 
     feed.innerHTML += `
       <div class="msg-row assistant">
         <div class="msg-bubble">
-          <div class="badge-tag badge-final">Toimintaohje</div><br>
-          <strong>${escapeHtml(ans.advice_text || data.text)}</strong>
-          
-          <div class="decision-card">
-            <div class="card-header">
-              <span class="card-title">Security Decision Record</span>
-              <span class="risk-badge risk-${risk}">${risk}</span>
+          ${cardContent}
+
+          <!-- Security Decision Record -->
+          <div class="decision-box">
+            <div class="decision-header">
+              <span class="decision-title">Security Decision Record</span>
+              <span class="risk-tag risk-${risk}">Risk: ${risk.toUpperCase()}</span>
             </div>
-            <div><strong>Primary Action:</strong> <code>${ans.primary_action}</code></div>
-            <div style="margin-top: 4px;"><strong>Escalation:</strong> ${escHtml}</div>
-            <div style="margin-top: 8px;"><strong>Actionable Steps:</strong></div>
-            <ul class="step-list">${stepsHtml}</ul>
-            <div class="audit-tags">
-              ${citationsHtml}
-              ${signalsHtml}
+            <div class="decision-row">
+              <strong>Primary Action:</strong> <code class="action-code">${ans.primary_action || "verify_via_official_channel"}</code>
+            </div>
+            <div class="decision-row">
+              <strong>Urgency Rating:</strong> <span style="text-transform: capitalize;">${urgency}</span>
+            </div>
+            <div class="decision-row">
+              <strong>Specialist Escalation:</strong> ${escHtml}
             </div>
           </div>
+
           ${ragHtml}
         </div>
       </div>
     `;
   }
-  feed.scrollTop = feed.scrollHeight;
 }
-
-async function nextTurn() {
-  if (isFinished) return;
-  const c = casesData[currentIndex];
-  const resp = await fetch("/api/step", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({case_id: c.case_id})
-  });
-  const data = await resp.json();
-  
-  const feed = document.getElementById("chatFeed");
-  
-  if (data.reply_type === "consent_request") {
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-consent">Consent Request</div><br>
-          ${escapeHtml(data.reply_text)}
-        </div>
-      </div>
-      <div class="msg-row user">
-        <div class="msg-bubble">${escapeHtml(data.sim_user_text)}</div>
-      </div>
-    `;
-  } else if (data.reply_type === "question") {
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-question">Decisive Question</div><br>
-          ${escapeHtml(data.reply_text)}
-        </div>
-      </div>
-      <div class="msg-row user">
-        <div class="msg-bubble">${escapeHtml(data.sim_user_text)}</div>
-      </div>
-    `;
-  } else if (data.reply_type === "final") {
-    isFinished = true;
-    document.getElementById("btnNext").disabled = true;
-    document.getElementById("btnNext").innerText = "Journey Complete";
-    const ans = data.final_answer || {};
-    const risk = ans.risk_level || "medium";
-    
-    let escHtml = ans.escalation_required 
-      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required \u2192 ${ans.escalation_target}</span>`
-      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
-
-    let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
-    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
-    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
-
-    feed.innerHTML += `
-      <div class="msg-row assistant">
-        <div class="msg-bubble">
-          <div class="badge-tag badge-final">Action-First Advice</div><br>
-          <strong>${escapeHtml(ans.advice_text)}</strong>
-          
-          <div class="decision-card">
-            <div class="card-header">
-              <span class="card-title">Security Decision Record</span>
-              <span class="risk-badge risk-${risk}">${risk}</span>
-            </div>
-            <div><strong>Primary Action:</strong> <code>${ans.primary_action}</code></div>
-            <div style="margin-top: 4px;"><strong>Escalation:</strong> ${escHtml}</div>
-            <div style="margin-top: 8px;"><strong>Actionable Steps:</strong></div>
-            <ul class="step-list">${stepsHtml}</ul>
-            <div class="audit-tags">
-              ${citationsHtml}
-              ${signalsHtml}
-            </div>
-          </div>
-        </div>
-      </div>
-    `;
-  }
-  feed.scrollTop = feed.scrollHeight;
-}
-
-function escapeHtml(text) {
-  if (!text) return "";
-  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-loadCases();
 </script>
-
 </body>
 </html>
 """
 
 
-class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
-    cases_cache: List[Dict[str, Any]] = []
-    active_simulators: Dict[str, UserSimulator] = {}
-    active_states: Dict[str, Dict[str, Any]] = {}
-    active_events: Dict[str, Dict[str, Any]] = {}
+class PlainChatHTTPHandler(http.server.BaseHTTPRequestHandler):
+    """Multi-threaded plain window HTTP handler serving the live chatbot."""
 
-    def log_message(self, format, *args):
-        # Quiet standard logging
-        return
-
-    def _send_html(self, html_str: str, status: int = 200):
-        body = html_str.encode("utf-8")
-        self.send_response(status)
+    def _send_html(self, content: str):
+        body = content.encode("utf-8")
+        self.send_response(200)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
         self.end_headers()
         self.wfile.write(body)
 
-    def _send_json(self, data: Any, status: int = 200):
-        body = json.dumps(
-            data,
-            ensure_ascii=False,
-            default=lambda o: list(o) if isinstance(o, (set, tuple)) else str(o)
-        ).encode("utf-8")
-        self.send_response(status)
+    def _send_json(self, data: Any):
+        body = json.dumps(data, ensure_ascii=False, default=lambda o: list(o) if isinstance(o, (set, tuple)) else str(o)).encode("utf-8")
+        self.send_response(200)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Connection", "close")
@@ -584,30 +591,11 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def do_GET(self):
-        if self.path == "/" or self.path == "/index.html":
+        if self.path in ("/", "/index.html", "/chat"):
             self._send_html(HTML_TEMPLATE)
         elif self.path == "/favicon.ico":
             self.send_response(204)
             self.end_headers()
-        elif self.path == "/api/cases":
-            custom_case = {
-                "case_id": "CUSTOM-CHAT",
-                "journey": "live_chat",
-                "title": "💬 Oma Tietoturvabotti (Kysy mitä vain)",
-                "profile": PERSONA_PROFILES["CUSTOM-CHAT"],
-                "opening_message": "Hei! Olen DNA:n digitaalinen tietoturva-avustaja. Voit kysyä minulta mistä tahansa epäilyttävästä viestistä, puhelusta, linkistä tai laitteen käytöksestä. Mistä haluaisit kysyä?",
-                "signals": {
-                    "device": {"summary": {"platform": "mobile", "os_version": "Live"}},
-                    "subscription": {"network_status": {"service": "normal"}}
-                }
-            }
-            cases_for_client = [custom_case]
-            for c in self.cases_cache:
-                client_c = copy.deepcopy(c)
-                cid = client_c.get("case_id", "")
-                client_c["profile"] = PERSONA_PROFILES.get(cid, {})
-                cases_for_client.append(client_c)
-            self._send_json(cases_for_client)
         else:
             self.send_response(404)
             self.end_headers()
@@ -618,126 +606,49 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         req = json.loads(body) if body else {}
 
         if self.path == "/api/chat":
-            sid = req.get("session_id", "default-live-session")
+            sid = req.get("session_id", "live-session")
             msg = req.get("message", "")
             bot = LiveChatbot()
             res = bot.handle_user_message(sid, msg)
             self._send_json(res)
-            return
-
-        cid = req.get("case_id")
-        case = next((c for c in self.cases_cache if c["case_id"] == cid), None)
-        if not case:
-            self.send_response(404)
-            self.end_headers()
-            return
-
-        if self.path == "/api/reset":
-            sim = UserSimulator(case)
-            self.active_simulators[cid] = sim
-            self.active_states[cid] = {}
-            self.active_events[cid] = {
-                "type": "start",
-                "conversation_id": cid,
-                "case": visible_case(case),
-                "max_assistant_turns": 6
-            }
-            self._send_json({"status": "ok"})
-
-        elif self.path == "/api/step":
-            if cid not in self.active_simulators or cid not in self.active_events:
-                self.active_simulators[cid] = UserSimulator(case)
-                self.active_states[cid] = {}
-                self.active_events[cid] = {
-                    "type": "start",
-                    "conversation_id": cid,
-                    "case": visible_case(case),
-                    "max_assistant_turns": 6
-                }
-
-            sim = self.active_simulators[cid]
-            state = self.active_states[cid]
-            event = self.active_events[cid]
-
-            reply = bot_step(event, state)
-            rtype = reply.get("type")
-
-            resp_data = {
-                "reply_type": rtype,
-                "reply_text": reply.get("text", "")
-            }
-
-            if rtype == "consent_request":
-                c = sim.consent(reply.get("fields", []))
-                resp_data["sim_user_text"] = c["text"]
-                self.active_events[cid] = {
-                    "type": "consent_reply",
-                    "granted": c["granted"],
-                    "refused": c["refused"],
-                    "text": c["text"],
-                    "signals": c.get("signals", {})
-                }
-            elif rtype == "question":
-                ans = sim.answer(reply.get("text", ""), reply.get("topics"))
-                resp_data["sim_user_text"] = ans
-                self.active_events[cid] = {"type": "user_reply", "text": ans}
-            elif rtype == "final":
-                resp_data["final_answer"] = reply.get("answer", {})
-                # Reset for next run
-                self.active_events[cid] = {
-                    "type": "start",
-                    "conversation_id": cid,
-                    "case": visible_case(case),
-                    "max_assistant_turns": 6
-                }
-                self.active_states[cid] = {}
-
-            self._send_json(resp_data)
+        elif self.path == "/api/reset":
+            self._send_json({"status": "reset_ok"})
         else:
             self.send_response(404)
             self.end_headers()
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Since AI — DNA Digital Security Assistant Interactive Demo & Live Chatbot")
-    parser.add_argument("--cases", default=SAMPLE_CASES_PATH, help="Path to jsonl cases file")
-    parser.add_argument("--cli", action="store_true", help="Run interactive/batch demo directly in terminal")
+    parser = argparse.ArgumentParser(description="DNA Digital Security Assistant — Plain Window Live Chatbot")
     parser.add_argument("--port", type=int, default=8080, help="Web server port (default: 8080)")
     args = parser.parse_args()
 
-    cases = load_jsonl(args.cases)
-    if not cases:
-        sys.exit(f"No cases found in {args.cases}")
-
-    if args.cli:
-        run_cli_demo(cases)
-    else:
-        DemoHTTPHandler.cases_cache = cases
-        ports_to_try = [args.port, 8085, 8088, 8888]
-        httpd = None
-        chosen_port = None
-        for p in ports_to_try:
-            try:
-                http.server.ThreadingHTTPServer.allow_reuse_address = True
-                httpd = http.server.ThreadingHTTPServer(("0.0.0.0", p), DemoHTTPHandler)
-                chosen_port = p
-                break
-            except OSError:
-                continue
-
-        if not httpd:
-            sys.exit("Error: Could not bind to any test port (8080, 8085, 8088, 8888).")
-
-        print("=" * 70)
-        print("  SINCE AI — DNA DIGITAL SECURITY ASSISTANT")
-        print(f"  Live Interactive Chatbot & Dashboard running!")
-        print(f"  👉 Open URL in your browser:  http://localhost:{chosen_port}")
-        print("  Press Ctrl+C to stop.")
-        print("=" * 70)
+    ports_to_try = [args.port, 8085, 8088, 8888]
+    httpd = None
+    chosen_port = None
+    for p in ports_to_try:
         try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down server.")
+            http.server.ThreadingHTTPServer.allow_reuse_address = True
+            httpd = http.server.ThreadingHTTPServer(("0.0.0.0", p), PlainChatHTTPHandler)
+            chosen_port = p
+            break
+        except OSError:
+            continue
+
+    if not httpd:
+        sys.exit("Error: Could not bind to any test port (8080, 8085, 8088, 8888).")
+
+    print("=" * 70)
+    print("  DNA DIGITAL SECURITY ASSISTANT — PLAIN WINDOW LIVE CHAT")
+    print(f"  Plain window ready with zero preset test cases.")
+    print(f"  Bilingual output (Finnish/Swedish + English) & all English buttons.")
+    print(f"  👉 Open URL in your browser:  http://localhost:{chosen_port}")
+    print("  Press Ctrl+C to stop.")
+    print("=" * 70)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down server.")
 
 
 if __name__ == "__main__":
