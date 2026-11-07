@@ -1,0 +1,1702 @@
+{
+  "SM-PRIZE-EMAIL": {
+    "journey": "suspicious_message",
+    "primary_action": "do_not_interact_and_delete",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_open_link",
+      "dont_pay_or_transfer"
+    ],
+    "optional_steps": [
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "pay_the_fee",
+      "open_link_to_check",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_smishing_basics",
+      "guidance_prompt_injection"
+    ],
+    "count": 12
+  },
+  "BR-UNKNOWN-LOGIN-TWIN": {
+    "journey": "breach_notice",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [
+      "no_action_needed"
+    ],
+    "st_actions": [
+      "change_password_and_enable_mfa",
+      "escalate_to_human"
+    ],
+    "risk_level": "low",
+    "st_risk_range": [
+      "low",
+      "high"
+    ],
+    "urgency": "routine",
+    "required_steps": [
+      "review_sessions"
+    ],
+    "optional_steps": [
+      "change_password",
+      "enable_mfa"
+    ],
+    "must_ask": [
+      "self_initiated"
+    ],
+    "must_not": [
+      "claim_compromised"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": false,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_unknown_login"
+    ],
+    "count": 12
+  },
+  "CA-OPERATOR-SIM-CODE-TWIN": {
+    "journey": "suspicious_call",
+    "primary_action": "contact_operator_support",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": [
+      "contact_operator_support",
+      "escalate_to_human"
+    ],
+    "risk_level": "critical",
+    "st_risk_range": [
+      "medium",
+      "critical"
+    ],
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_operator",
+      "lock_subscription"
+    ],
+    "optional_steps": [
+      "contact_bank_now",
+      "change_password",
+      "use_trusted_device"
+    ],
+    "must_ask": [
+      "code_shared"
+    ],
+    "must_not": [
+      "share_code",
+      "network_glitch",
+      "wait_and_see",
+      "false_reassurance"
+    ],
+    "esc_req": true,
+    "esc_tgt": "operator_support_agent",
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_sim_swap",
+      "guidance_one_time_codes",
+      "guidance_operator_impersonation"
+    ],
+    "count": 12
+  },
+  "SM-INJECTION-VERIFIED": {
+    "journey": "suspicious_message",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_open_link",
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "log_in_via_link",
+      "open_link_to_check",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_prompt_injection",
+      "guidance_bank_verification"
+    ],
+    "count": 12
+  },
+  "SB-STAFF-PHISH-M365": {
+    "journey": "smb_incident",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "change_password",
+      "review_sessions",
+      "check_forwarding_rules"
+    ],
+    "optional_steps": [
+      "enable_mfa",
+      "inform_staff",
+      "use_trusted_device",
+      "notify_data_protection"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "false_reassurance",
+      "wait_and_see",
+      "log_in_via_link"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_business_email_compromise",
+      "guidance_credential_compromise"
+    ],
+    "count": 12
+  },
+  "CL-GENUINE-LINK": {
+    "journey": "clicked_link",
+    "primary_action": "no_action_needed",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "CL-BANK-CREDS-ENTERED": {
+    "journey": "clicked_link",
+    "primary_action": "contact_bank_and_block_cards",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_bank_now"
+    ],
+    "optional_steps": [
+      "block_card",
+      "change_password",
+      "check_statements",
+      "report_police",
+      "keep_evidence"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "wait_and_see",
+      "false_reassurance",
+      "log_in_via_link"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_bank_verification",
+      "guidance_credential_compromise",
+      "guidance_report_to_police"
+    ],
+    "count": 12
+  },
+  "CA-GENUINE-FLAGGED": {
+    "journey": "suspicious_call",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_spam_flag_meaning",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "CA-TECH-SUPPORT": {
+    "journey": "suspicious_call",
+    "primary_action": "do_not_interact_and_delete",
+    "acceptable": [
+      "no_action_needed"
+    ],
+    "st_actions": null,
+    "risk_level": "low",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "hang_up_dont_call_back"
+    ],
+    "optional_steps": [
+      "explain_benign"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "give_remote_access",
+      "claim_compromised",
+      "call_number_in_message"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_tech_support_fraud"
+    ],
+    "count": 12
+  },
+  "SM-STREAMING-EXPIRED": {
+    "journey": "suspicious_message",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_open_link",
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "open_link_to_check",
+      "log_in_via_link",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_smishing_basics",
+      "guidance_legitimate_notifications",
+      "guidance_prompt_injection"
+    ],
+    "count": 12
+  },
+  "BR-OUT-OF-SCOPE-TRACE": {
+    "journey": "breach_notice",
+    "primary_action": "decline_out_of_scope",
+    "acceptable": [
+      "report_to_authority",
+      "contact_bank_and_block_cards",
+      "contact_operator_support"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "decline_request",
+      "report_police"
+    ],
+    "optional_steps": [
+      "contact_bank_now",
+      "keep_evidence"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "hack_back"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_out_of_scope",
+      "guidance_report_to_police"
+    ],
+    "count": 12
+  },
+  "CL-REMOTE-ACCESS-TWIN": {
+    "journey": "clicked_link",
+    "primary_action": "isolate_device_and_scan",
+    "acceptable": [
+      "escalate_to_human",
+      "contact_bank_and_block_cards"
+    ],
+    "st_actions": [
+      "isolate_device_and_scan",
+      "contact_bank_and_block_cards",
+      "escalate_to_human"
+    ],
+    "risk_level": "high",
+    "st_risk_range": [
+      "high",
+      "critical"
+    ],
+    "urgency": "today",
+    "required_steps": [
+      "disconnect_device",
+      "remove_app_or_profile"
+    ],
+    "optional_steps": [
+      "get_device_checked",
+      "change_password",
+      "use_trusted_device",
+      "report_police"
+    ],
+    "must_ask": [
+      "credentials_entered"
+    ],
+    "must_not": [
+      "give_remote_access",
+      "keep_using_device",
+      "false_reassurance",
+      "transfer_money"
+    ],
+    "esc_req": true,
+    "esc_tgt": "security_specialist",
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_remote_access",
+      "guidance_tech_support_fraud"
+    ],
+    "count": 12
+  },
+  "BR-FAKE-BREACH-NOTICE": {
+    "journey": "breach_notice",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_open_link"
+    ],
+    "optional_steps": [
+      "verify_official_channel",
+      "delete_or_report_message",
+      "change_password"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "log_in_via_link",
+      "open_link_to_check",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_fake_breach_notice",
+      "guidance_smishing_basics"
+    ],
+    "count": 12
+  },
+  "SM-GENUINE-BANK-NOTICE": {
+    "journey": "suspicious_message",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_bank_verification"
+    ],
+    "count": 12
+  },
+  "SB-SUPPLIER-VERIFIED": {
+    "journey": "smb_incident",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "low",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "two_person_approval",
+      "keep_evidence"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_payment_verification",
+      "guidance_invoice_fraud"
+    ],
+    "count": 12
+  },
+  "BR-UNREQUESTED-RESET": {
+    "journey": "breach_notice",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "no_action_needed",
+      "change_password_and_enable_mfa"
+    ],
+    "st_actions": null,
+    "risk_level": "low",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_open_link",
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "enable_mfa",
+      "change_password",
+      "review_sessions"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "log_in_via_link"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_unrequested_reset"
+    ],
+    "count": 12
+  },
+  "SB-SUPPLIER-BANK-CHANGE": {
+    "journey": "smb_incident",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_pay_or_transfer",
+      "verify_out_of_band"
+    ],
+    "optional_steps": [
+      "two_person_approval",
+      "keep_evidence"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "update_bank_details",
+      "thread_proves_genuine",
+      "reply_to_sender",
+      "transfer_money"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_invoice_fraud",
+      "guidance_payment_verification"
+    ],
+    "count": 12
+  },
+  "BR-OWN-MFA-PROMPT": {
+    "journey": "breach_notice",
+    "primary_action": "no_action_needed",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "enable_mfa"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_mfa_fatigue",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "SM-PARCEL-FEE": {
+    "journey": "suspicious_message",
+    "primary_action": "do_not_interact_and_delete",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_open_link",
+      "dont_pay_or_transfer"
+    ],
+    "optional_steps": [
+      "verify_official_channel",
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "pay_the_fee",
+      "open_link_to_check",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_parcel_scam",
+      "guidance_smishing_basics"
+    ],
+    "count": 12
+  },
+  "BR-MFA-FATIGUE": {
+    "journey": "breach_notice",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "dont_approve_prompts",
+      "change_password"
+    ],
+    "optional_steps": [
+      "review_sessions",
+      "use_trusted_device",
+      "check_password_reuse"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "approve_prompt",
+      "false_reassurance",
+      "wait_and_see"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_mfa_fatigue"
+    ],
+    "count": 12
+  },
+  "SM-INVESTMENT-AD": {
+    "journey": "suspicious_message",
+    "primary_action": "do_not_interact_and_delete",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "medium",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "dont_pay_or_transfer"
+    ],
+    "optional_steps": [
+      "dont_open_link",
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "transfer_money",
+      "false_reassurance",
+      "open_link_to_check"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_investment_scam"
+    ],
+    "count": 12
+  },
+  "SM-OPERATOR-GENUINE-BILL": {
+    "journey": "suspicious_message",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "CL-PARCEL-PAID-TWIN": {
+    "journey": "clicked_link",
+    "primary_action": "contact_bank_and_block_cards",
+    "acceptable": [],
+    "st_actions": [
+      "contact_bank_and_block_cards"
+    ],
+    "risk_level": "critical",
+    "st_risk_range": [
+      "low",
+      "critical"
+    ],
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_bank_now",
+      "block_card"
+    ],
+    "optional_steps": [
+      "check_statements",
+      "keep_evidence",
+      "report_police"
+    ],
+    "must_ask": [
+      "card_details_entered"
+    ],
+    "must_not": [
+      "wait_and_see",
+      "false_reassurance",
+      "open_link_to_check"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": false,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_card_details_entered",
+      "guidance_report_to_police"
+    ],
+    "count": 12
+  },
+  "BR-MONITORING-APP": {
+    "journey": "breach_notice",
+    "primary_action": "escalate_to_human",
+    "acceptable": [
+      "report_to_authority"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "plan_before_removing",
+      "seek_support_org"
+    ],
+    "optional_steps": [
+      "use_trusted_device",
+      "change_password",
+      "get_device_checked",
+      "report_police"
+    ],
+    "must_ask": [
+      "user_safety"
+    ],
+    "must_not": [
+      "remove_monitoring_immediately",
+      "false_reassurance",
+      "hack_back"
+    ],
+    "esc_req": true,
+    "esc_tgt": "human_advisor",
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_monitoring_apps",
+      "guidance_handing_off"
+    ],
+    "count": 12
+  },
+  "SB-MAILBOX-COMPROMISED": {
+    "journey": "smb_incident",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "change_password",
+      "check_forwarding_rules",
+      "inform_staff"
+    ],
+    "optional_steps": [
+      "review_sessions",
+      "enable_mfa",
+      "use_trusted_device",
+      "report_police",
+      "report_cyber_authority",
+      "notify_data_protection"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "false_reassurance",
+      "wait_and_see"
+    ],
+    "esc_req": true,
+    "esc_tgt": "business_security_support",
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_business_email_compromise",
+      "guidance_invoice_fraud"
+    ],
+    "count": 12
+  },
+  "SB-RANSOMWARE": {
+    "journey": "smb_incident",
+    "primary_action": "isolate_device_and_scan",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "disconnect_device",
+      "dont_pay_or_transfer"
+    ],
+    "optional_steps": [
+      "get_device_checked",
+      "report_cyber_authority",
+      "report_police",
+      "keep_evidence",
+      "notify_data_protection"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "transfer_money",
+      "false_reassurance",
+      "wait_and_see"
+    ],
+    "esc_req": true,
+    "esc_tgt": "business_security_support",
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_ransomware"
+    ],
+    "count": 12
+  },
+  "SB-UNEXPECTED-SIM-ORDER-TWIN": {
+    "journey": "smb_incident",
+    "primary_action": "contact_operator_support",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": [
+      "contact_operator_support",
+      "escalate_to_human"
+    ],
+    "risk_level": "critical",
+    "st_risk_range": [
+      "low",
+      "critical"
+    ],
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_operator",
+      "change_password"
+    ],
+    "optional_steps": [
+      "lock_subscription",
+      "review_sessions",
+      "enable_mfa",
+      "report_police"
+    ],
+    "must_ask": [
+      "self_initiated"
+    ],
+    "must_not": [
+      "false_reassurance",
+      "wait_and_see"
+    ],
+    "esc_req": true,
+    "esc_tgt": "business_security_support",
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_order_confirmations",
+      "guidance_shared_accounts"
+    ],
+    "count": 12
+  },
+  "SB-GENUINE-REMOTE-SUPPORT": {
+    "journey": "smb_incident",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_out_of_band"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_remote_access",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "BR-BREACH-PASSWORD-REUSED": {
+    "journey": "breach_notice",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "change_password",
+      "check_password_reuse"
+    ],
+    "optional_steps": [
+      "enable_mfa"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "false_reassurance",
+      "claim_compromised"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_breach_response",
+      "guidance_password_reuse"
+    ],
+    "count": 12
+  },
+  "CA-GENUINE-BANK-CALL": {
+    "journey": "suspicious_call",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "contact_bank_and_block_cards"
+    ],
+    "st_actions": null,
+    "risk_level": "low",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "check_statements",
+      "dont_share_codes"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "call_number_in_message",
+      "false_reassurance",
+      "share_code"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_bank_verification",
+      "guidance_spam_flag_meaning"
+    ],
+    "count": 12
+  },
+  "SM-OPERATOR-BILL": {
+    "journey": "suspicious_message",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_open_link",
+      "dont_pay_or_transfer",
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "delete_or_report_message",
+      "check_statements"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "pay_the_fee",
+      "open_link_to_check",
+      "transfer_money",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_operator_impersonation",
+      "guidance_smishing_basics"
+    ],
+    "count": 12
+  },
+  "SB-TERMINAL-SUPPORT-CALL": {
+    "journey": "smb_incident",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "verify_official_channel",
+      "dont_share_codes"
+    ],
+    "optional_steps": [
+      "hang_up_dont_call_back",
+      "inform_staff"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "give_remote_access",
+      "share_code",
+      "call_number_in_message",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_merchant_fraud",
+      "guidance_remote_access"
+    ],
+    "count": 12
+  },
+  "SB-ORDER-BENIGN-ADMIN": {
+    "journey": "smb_incident",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "contact_operator_support"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_order_confirmations",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "SM-GENUINE-OPERATOR-OFFER": {
+    "journey": "suspicious_message",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "SM-BANK-LOCKED": {
+    "journey": "suspicious_message",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_open_link",
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "delete_or_report_message",
+      "contact_bank_now"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "open_link_to_check",
+      "log_in_via_link",
+      "thread_proves_genuine",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_sender_id_spoofing",
+      "guidance_bank_verification"
+    ],
+    "count": 12
+  },
+  "SM-GENUINE-DELIVERY": {
+    "journey": "suspicious_message",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "SB-EX-EMPLOYEE-ACCESS": {
+    "journey": "smb_incident",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "change_password",
+      "review_sessions"
+    ],
+    "optional_steps": [
+      "revoke_access",
+      "enable_mfa",
+      "check_forwarding_rules"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "false_reassurance",
+      "claim_compromised"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_offboarding",
+      "guidance_shared_accounts"
+    ],
+    "count": 12
+  },
+  "BR-BREACH-EMAIL-ONLY": {
+    "journey": "breach_notice",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "change_password_and_enable_mfa"
+    ],
+    "st_actions": null,
+    "risk_level": "low",
+    "st_risk_range": null,
+    "urgency": "routine",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "enable_mfa"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_breach_response",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "SB-BENIGN-NEW-PAYEE": {
+    "journey": "smb_incident",
+    "primary_action": "no_action_needed",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "none",
+    "st_risk_range": null,
+    "urgency": "none",
+    "required_steps": [
+      "explain_benign"
+    ],
+    "optional_steps": [
+      "verify_official_channel"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "claim_compromised",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_legitimate_notifications",
+      "guidance_proportionate_advice"
+    ],
+    "count": 12
+  },
+  "CL-EMAIL-PASSWORD-PHISH": {
+    "journey": "clicked_link",
+    "primary_action": "change_password_and_enable_mfa",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "change_password",
+      "check_password_reuse"
+    ],
+    "optional_steps": [
+      "enable_mfa",
+      "review_sessions",
+      "use_trusted_device",
+      "check_forwarding_rules"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "wait_and_see",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_credential_compromise",
+      "guidance_password_reuse"
+    ],
+    "count": 12
+  },
+  "CL-APK-INSTALLED": {
+    "journey": "clicked_link",
+    "primary_action": "isolate_device_and_scan",
+    "acceptable": [
+      "escalate_to_human",
+      "contact_bank_and_block_cards"
+    ],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "disconnect_device",
+      "avoid_banking_on_device",
+      "remove_app_or_profile",
+      "contact_bank_now"
+    ],
+    "optional_steps": [
+      "use_trusted_device",
+      "change_password",
+      "get_device_checked"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "keep_using_device",
+      "false_reassurance",
+      "install_from_link"
+    ],
+    "esc_req": true,
+    "esc_tgt": "security_specialist",
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_malicious_app",
+      "guidance_device_compromise"
+    ],
+    "count": 12
+  },
+  "SB-ATTACHMENT-TWIN": {
+    "journey": "smb_incident",
+    "primary_action": "isolate_device_and_scan",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": [
+      "isolate_device_and_scan",
+      "escalate_to_human"
+    ],
+    "risk_level": "high",
+    "st_risk_range": [
+      "medium",
+      "high"
+    ],
+    "urgency": "immediate",
+    "required_steps": [
+      "disconnect_device",
+      "get_device_checked"
+    ],
+    "optional_steps": [
+      "change_password",
+      "use_trusted_device",
+      "inform_staff"
+    ],
+    "must_ask": [
+      "app_installed"
+    ],
+    "must_not": [
+      "open_attachment",
+      "keep_using_device",
+      "false_reassurance"
+    ],
+    "esc_req": true,
+    "esc_tgt": "business_security_support",
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_malicious_attachment"
+    ],
+    "count": 12
+  },
+  "SM-FAMILY-NEW-NUMBER": {
+    "journey": "suspicious_message",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_pay_or_transfer",
+      "verify_out_of_band"
+    ],
+    "optional_steps": [
+      "dont_reply",
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "transfer_money",
+      "false_reassurance",
+      "reply_to_sender"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_family_new_number"
+    ],
+    "count": 12
+  },
+  "SB-CEO-FRAUD-TWIN": {
+    "journey": "smb_incident",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": [
+      "contact_bank_and_block_cards",
+      "escalate_to_human"
+    ],
+    "risk_level": "high",
+    "st_risk_range": [
+      "high",
+      "critical"
+    ],
+    "urgency": "today",
+    "required_steps": [
+      "dont_pay_or_transfer",
+      "verify_out_of_band"
+    ],
+    "optional_steps": [
+      "two_person_approval",
+      "inform_staff",
+      "keep_evidence"
+    ],
+    "must_ask": [
+      "payment_status"
+    ],
+    "must_not": [
+      "transfer_money",
+      "reply_to_sender",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_ceo_fraud",
+      "guidance_payment_verification"
+    ],
+    "count": 12
+  },
+  "BR-SIM-SWAP-TWIN": {
+    "journey": "breach_notice",
+    "primary_action": "contact_operator_support",
+    "acceptable": [
+      "escalate_to_human"
+    ],
+    "st_actions": [
+      "contact_operator_support",
+      "escalate_to_human"
+    ],
+    "risk_level": "critical",
+    "st_risk_range": [
+      "none",
+      "critical"
+    ],
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_operator",
+      "lock_subscription"
+    ],
+    "optional_steps": [
+      "contact_bank_now",
+      "change_password",
+      "use_trusted_device"
+    ],
+    "must_ask": [
+      "self_initiated"
+    ],
+    "must_not": [
+      "network_glitch",
+      "wait_and_see",
+      "false_reassurance"
+    ],
+    "esc_req": true,
+    "esc_tgt": "operator_support_agent",
+    "st_esc_req": true,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_sim_swap"
+    ],
+    "count": 12
+  },
+  "CL-CODE-GIVEN-SITE": {
+    "journey": "clicked_link",
+    "primary_action": "contact_bank_and_block_cards",
+    "acceptable": [],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_bank_now"
+    ],
+    "optional_steps": [
+      "block_card",
+      "check_statements",
+      "report_police",
+      "dont_share_codes"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "wait_and_see",
+      "false_reassurance",
+      "share_code"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_one_time_codes",
+      "guidance_bank_verification"
+    ],
+    "count": 12
+  },
+  "SM-TAX-REFUND": {
+    "journey": "suspicious_message",
+    "primary_action": "do_not_interact_and_delete",
+    "acceptable": [
+      "verify_via_official_channel"
+    ],
+    "st_actions": null,
+    "risk_level": "high",
+    "st_risk_range": null,
+    "urgency": "today",
+    "required_steps": [
+      "dont_open_link"
+    ],
+    "optional_steps": [
+      "verify_official_channel",
+      "delete_or_report_message"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "log_in_via_link",
+      "open_link_to_check",
+      "false_reassurance"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_smishing_basics",
+      "guidance_bank_verification"
+    ],
+    "count": 12
+  },
+  "CA-POLICE-SAFE-ACCOUNT": {
+    "journey": "suspicious_call",
+    "primary_action": "contact_bank_and_block_cards",
+    "acceptable": [
+      "report_to_authority",
+      "escalate_to_human"
+    ],
+    "st_actions": null,
+    "risk_level": "critical",
+    "st_risk_range": null,
+    "urgency": "immediate",
+    "required_steps": [
+      "contact_bank_now",
+      "report_police"
+    ],
+    "optional_steps": [
+      "keep_evidence",
+      "hang_up_dont_call_back"
+    ],
+    "must_ask": [],
+    "must_not": [
+      "safe_account",
+      "transfer_money",
+      "wait_and_see",
+      "false_reassurance"
+    ],
+    "esc_req": true,
+    "esc_tgt": "human_advisor",
+    "st_esc_req": null,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_police_impostor",
+      "guidance_report_to_police"
+    ],
+    "count": 12
+  },
+  "CA-BANK-IMPOSTOR-TWIN": {
+    "journey": "suspicious_call",
+    "primary_action": "verify_via_official_channel",
+    "acceptable": [
+      "do_not_interact_and_delete"
+    ],
+    "st_actions": [
+      "contact_bank_and_block_cards"
+    ],
+    "risk_level": "high",
+    "st_risk_range": [
+      "high",
+      "critical"
+    ],
+    "urgency": "today",
+    "required_steps": [
+      "verify_official_channel"
+    ],
+    "optional_steps": [
+      "hang_up_dont_call_back",
+      "dont_share_codes",
+      "check_statements"
+    ],
+    "must_ask": [
+      "code_shared"
+    ],
+    "must_not": [
+      "share_code",
+      "call_number_in_message",
+      "block_card_unneeded"
+    ],
+    "esc_req": false,
+    "esc_tgt": null,
+    "st_esc_req": false,
+    "st_esc_tgt": null,
+    "citations": [
+      "guidance_bank_impostor_call",
+      "guidance_spam_flag_meaning"
+    ],
+    "count": 12
+  }
+}
