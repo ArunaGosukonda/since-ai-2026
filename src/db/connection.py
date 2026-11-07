@@ -1,185 +1,97 @@
 """Database connection manager for Since AI.
 
-Supports:
-1. Google Cloud SQL for PostgreSQL 16 with pgvector (europe-north1)
-2. Local Docker PostgreSQL 16 + pgvector (localhost:5432)
-3. Hermetic local SQLite fallback for air-gapped unit/integration testing
+Strict PostgreSQL-Only Architecture:
+- Google Cloud SQL for PostgreSQL 18.6 with pgvector in europe-north1 (Hamina, Finland)
+- In Cloud Run: Connects securely via native Cloud SQL Unix socket /cloudsql/<INSTANCE_CONNECTION_NAME>
+- In Local Development: Connects via Cloud SQL Auth Proxy on 127.0.0.1:5433
+- PostgreSQL is the ONLY application database.
+- Zero SQLite fallback. Fail fast on connection failure with DatabaseConnectionError.
 """
 
+from __future__ import annotations
 import os
-import sqlite3
 import logging
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any
+
+from dotenv import load_dotenv
 
 logger = logging.getLogger(__name__)
 
-# Configurable environment settings
+# Load environment configuration from .env if present
+ROOT_DIR = Path(__file__).resolve().parent.parent.parent
+load_dotenv(ROOT_DIR / ".env")
+load_dotenv(Path.home() / ".env")
+
+# Cloud SQL PostgreSQL Configuration
+POSTGRES_HOST = os.getenv("POSTGRES_HOST", "127.0.0.1")
+POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5433"))
+POSTGRES_DB = os.getenv("POSTGRES_DB", "since_ai")
+POSTGRES_USER = os.getenv("POSTGRES_USER", "since_ai_app")
+POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "")
 DATABASE_URL = os.getenv("DATABASE_URL")
-POSTGRES_HOST = os.getenv("POSTGRES_HOST", "localhost")
-POSTGRES_PORT = int(os.getenv("POSTGRES_PORT", "5432"))
-POSTGRES_DB = os.getenv("POSTGRES_DB", "sinceai")
-POSTGRES_USER = os.getenv("POSTGRES_USER", "sinceai_user")
-POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "sinceai_local_secret")
-SQLITE_FALLBACK_PATH = os.getenv("SQLITE_PATH", "data/assistant_sessions.db")
+INSTANCE_CONNECTION_NAME = os.getenv("INSTANCE_CONNECTION_NAME")
+
+
+class DatabaseConnectionError(RuntimeError):
+    """Raised when connection to the mandatory PostgreSQL database fails."""
+    pass
 
 
 class DatabaseConnectionManager:
-    """Manages connections to PostgreSQL or SQLite fallback."""
+    """Manages connections strictly to PostgreSQL + pgvector.
+    
+    Zero SQLite fallback. Fails fast with DatabaseConnectionError if PostgreSQL is unreachable.
+    """
 
     def __init__(self):
-        self._prefer_postgres = bool(DATABASE_URL or os.getenv("POSTGRES_HOST"))
-        self._active_backend = None
+        self._active_backend = "postgresql"
 
     def get_connection(self) -> Any:
-        """Returns an active database connection."""
-        if self._prefer_postgres:
-            try:
-                import psycopg
-                conn_str = DATABASE_URL or (
-                    f"postgresql://{POSTGRES_USER}:{POSTGRES_PASSWORD}@"
-                    f"{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+        """Returns an active PostgreSQL connection with pgvector registered.
+        
+        Raises DatabaseConnectionError if connection cannot be established.
+        """
+        try:
+            import psycopg
+            from pgvector.psycopg import register_vector
+
+            if DATABASE_URL:
+                conn = psycopg.connect(DATABASE_URL)
+            elif INSTANCE_CONNECTION_NAME:
+                # Native Cloud Run connection via Cloud SQL Unix socket
+                socket_dir = f"/cloudsql/{INSTANCE_CONNECTION_NAME}"
+                conn = psycopg.connect(
+                    host=socket_dir,
+                    dbname=POSTGRES_DB,
+                    user=POSTGRES_USER,
+                    password=POSTGRES_PASSWORD,
                 )
-                conn = psycopg.connect(conn_str)
-                self._active_backend = "postgresql"
-                return conn
-            except Exception as e:
-                logger.warning(
-                    "PostgreSQL connection failed (%s). Falling back to local SQLite repository.",
-                    e,
+            else:
+                # Standard TCP connection (Local Proxy or Docker)
+                conn = psycopg.connect(
+                    host=POSTGRES_HOST,
+                    port=POSTGRES_PORT,
+                    dbname=POSTGRES_DB,
+                    user=POSTGRES_USER,
+                    password=POSTGRES_PASSWORD,
                 )
 
-        # Fallback to SQLite
-        self._active_backend = "sqlite"
-        os.makedirs(os.path.dirname(os.path.abspath(SQLITE_FALLBACK_PATH)), exist_ok=True)
-        conn = sqlite3.connect(SQLITE_FALLBACK_PATH)
-        conn.row_factory = sqlite3.Row
-        self._ensure_sqlite_tables(conn)
-        return conn
+            register_vector(conn)
+            self._active_backend = "postgresql"
+            return conn
+        except Exception as e:
+            target = f"Unix socket /cloudsql/{INSTANCE_CONNECTION_NAME}" if INSTANCE_CONNECTION_NAME else f"{POSTGRES_HOST}:{POSTGRES_PORT}"
+            err_msg = (
+                f"Failed to connect to Google Cloud SQL PostgreSQL ({target}/{POSTGRES_DB}): {e}. "
+                "PostgreSQL is the only authorized database engine for Since AI. Zero SQLite fallback allowed."
+            )
+            logger.error(err_msg)
+            raise DatabaseConnectionError(err_msg) from e
 
     @property
     def active_backend(self) -> str:
-        return self._active_backend or "uninitialized"
-
-    def _ensure_sqlite_tables(self, conn: sqlite3.Connection) -> None:
-        """Ensures the 12 tables exist in SQLite fallback mode."""
-        cursor = conn.cursor()
-        cursor.executescript("""
-            CREATE TABLE IF NOT EXISTS users (
-                id TEXT PRIMARY KEY,
-                locale TEXT NOT NULL DEFAULT 'fi',
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                updated_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS conversations (
-                id TEXT PRIMARY KEY,
-                user_id TEXT,
-                started_at TEXT DEFAULT CURRENT_TIMESTAMP,
-                ended_at TEXT,
-                status TEXT NOT NULL DEFAULT 'active',
-                channel TEXT NOT NULL DEFAULT 'web'
-            );
-            CREATE TABLE IF NOT EXISTS conversation_turns (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT NOT NULL,
-                turn_index INT NOT NULL,
-                role TEXT NOT NULL,
-                content TEXT NOT NULL,
-                language TEXT DEFAULT 'fi',
-                metadata TEXT DEFAULT '{}',
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS case_state (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT NOT NULL UNIQUE,
-                threat_category TEXT,
-                confirmed_facts TEXT NOT NULL DEFAULT '{}',
-                unresolved_questions TEXT NOT NULL DEFAULT '[]',
-                decisive_topic TEXT,
-                last_updated TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS security_incidents (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT,
-                risk_level TEXT NOT NULL,
-                urgency TEXT NOT NULL,
-                action_type TEXT NOT NULL,
-                requires_specialist INT NOT NULL DEFAULT 0,
-                description TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS knowledge_docs (
-                id TEXT PRIMARY KEY,
-                doc_id TEXT NOT NULL UNIQUE,
-                title TEXT NOT NULL,
-                url TEXT,
-                language TEXT NOT NULL DEFAULT 'fi',
-                topic TEXT NOT NULL,
-                audience TEXT NOT NULL DEFAULT 'consumer',
-                content_hash TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS semantic_chunks (
-                id TEXT PRIMARY KEY,
-                doc_id TEXT NOT NULL,
-                chunk_index INT NOT NULL,
-                section_header TEXT,
-                chunk_text TEXT NOT NULL,
-                token_count INT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS vector_embeddings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                chunk_id TEXT NOT NULL UNIQUE,
-                embedding TEXT NOT NULL,
-                model_id TEXT NOT NULL,
-                dimension INT NOT NULL DEFAULT 768,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS retrieval_audit (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT,
-                turn_index INT,
-                contextual_query_redacted TEXT NOT NULL,
-                embedding_model TEXT NOT NULL,
-                embedding_version TEXT,
-                retrieved_doc_ids TEXT NOT NULL,
-                similarity_scores TEXT NOT NULL,
-                metadata_filters TEXT DEFAULT '{}',
-                latency_ms REAL NOT NULL,
-                evaluation_outcome TEXT NOT NULL,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS consent_records (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT,
-                conversation_id TEXT,
-                telemetry_granted INT NOT NULL DEFAULT 0,
-                processing_purpose TEXT NOT NULL DEFAULT 'incident_resolution',
-                granted_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS decision_outcomes (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT NOT NULL,
-                turn_index INT NOT NULL,
-                action TEXT NOT NULL,
-                risk_level TEXT NOT NULL,
-                urgency TEXT NOT NULL,
-                requires_specialist INT NOT NULL DEFAULT 0,
-                escalation_target TEXT,
-                twin_decisive_question TEXT,
-                rationale TEXT,
-                created_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-            CREATE TABLE IF NOT EXISTS security_audit_events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                conversation_id TEXT,
-                event_type TEXT NOT NULL,
-                severity TEXT NOT NULL,
-                payload TEXT NOT NULL DEFAULT '{}',
-                detected_at TEXT DEFAULT CURRENT_TIMESTAMP
-            );
-        """)
-        conn.commit()
+        return self._active_backend
 
 
 _manager = DatabaseConnectionManager()

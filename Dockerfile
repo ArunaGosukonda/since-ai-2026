@@ -18,7 +18,7 @@ FROM python:3.12-slim AS runner
 
 WORKDIR /app
 
-# Install minimal runtime libraries for PostgreSQL
+# Install minimal runtime libraries for PostgreSQL and healthchecks
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
@@ -31,9 +31,12 @@ ENV PYTHONUNBUFFERED=1
 ENV PORT=8080
 ENV GCP_REGION=europe-north1
 
-# Copy application source code and reference data
+# Copy application source code, reference data, and web assets
 COPY src/ /app/src/
 COPY data/reference/ /app/data/reference/
+COPY frontend/ /app/frontend/
+COPY demo.html /app/demo.html
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
 # Create non-root system user for security hardening
 RUN useradd -u 1001 -m sinceai && chown -R sinceai:sinceai /app
@@ -41,4 +44,4 @@ USER sinceai
 
 EXPOSE 8080
 
-CMD ["uvicorn", "src.api.main:app", "--host", "0.0.0.0", "--port", "8080"]
+ENTRYPOINT ["/app/docker-entrypoint.sh"]

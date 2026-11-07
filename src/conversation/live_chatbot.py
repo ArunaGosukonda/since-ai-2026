@@ -3,7 +3,7 @@
 
 Processes arbitrary free-form security questions from human users,
 determines threat intent, asks decisive questions to complete the journey,
-grounds responses in DNA official guidance via RAG, and saves state to SQLite.
+grounds responses in DNA official guidance via RAG, and saves state to PostgreSQL.
 """
 import re
 import uuid

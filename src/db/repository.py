@@ -1,52 +1,58 @@
 """Type-safe repository for Since AI data operations.
 
-Interfaces with the 12 schema tables in PostgreSQL/pgvector or fallback SQLite.
+Interfaces strictly with Google Cloud SQL for PostgreSQL 18.6 with pgvector.
+Zero SQLite fallback. Native pgvector cosine similarity search using the <=> operator.
 """
 
 from __future__ import annotations
 import json
-import math
 import logging
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
+
+from psycopg.rows import dict_row
 
 from src.db.connection import get_db_connection
 
 logger = logging.getLogger(__name__)
 
 
-def _cosine_similarity(v1: List[float], v2: List[float]) -> float:
-    """Computes cosine similarity between two float vectors."""
-    dot = sum(a * b for a, b in zip(v1, v2))
-    norm1 = math.sqrt(sum(a * a for a in v1))
-    norm2 = math.sqrt(sum(b * b for b in v2))
-    if norm1 == 0.0 or norm2 == 0.0:
-        return 0.0
-    return dot / (norm1 * norm2)
+def _vector_to_pg_literal(vec: List[float]) -> str:
+    """Formats float list to standard PostgreSQL pgvector literal [x,y,z]."""
+    return "[" + ",".join(f"{x:.6f}" for x in vec) + "]"
 
 
 class PostgresRepository:
-    """Repository implementation handling session, vector, and audit persistence."""
+    """Repository handling conversations, turns, case state, knowledge, vectors, and audits in PostgreSQL."""
 
     def __init__(self):
         pass
 
     def create_or_get_conversation(self, conversation_id: str, user_id: Optional[str] = None) -> Dict[str, Any]:
+        """Ensures a conversation record exists in PostgreSQL."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            # Check if exists
-            cursor.execute("SELECT id, user_id, status FROM conversations WHERE id = ?", (conversation_id,))
-            row = cursor.fetchone()
-            if row:
-                return dict(row) if hasattr(row, "keys") else {"id": row[0], "user_id": row[1], "status": row[2]}
+            with conn.cursor(row_factory=dict_row) as cursor:
+                cursor.execute(
+                    "SELECT id, user_id, status FROM conversations WHERE id = %s",
+                    (conversation_id,),
+                )
+                row = cursor.fetchone()
+                if row:
+                    return dict(row)
 
-            cursor.execute(
-                "INSERT INTO conversations (id, user_id, status) VALUES (?, ?, 'active')",
-                (conversation_id, user_id),
-            )
-            conn.commit()
-            return {"id": conversation_id, "user_id": user_id, "status": "active"}
+                cursor.execute(
+                    """
+                    INSERT INTO conversations (id, user_id, status)
+                    VALUES (%s, %s, 'active')
+                    ON CONFLICT (id) DO UPDATE SET status = 'active'
+                    RETURNING id, user_id, status
+                    """,
+                    (conversation_id, user_id),
+                )
+                new_row = cursor.fetchone()
+                conn.commit()
+                return dict(new_row) if new_row else {"id": conversation_id, "user_id": user_id, "status": "active"}
         finally:
             conn.close()
 
@@ -59,50 +65,52 @@ class PostgresRepository:
         language: str = "fi",
         metadata: Optional[Dict[str, Any]] = None,
     ) -> None:
+        """Appends a turn to conversation_turns in PostgreSQL."""
         self.create_or_get_conversation(conversation_id)
         conn = get_db_connection()
-        cursor = conn.cursor()
         meta_str = json.dumps(metadata or {})
         try:
-            cursor.execute(
-                """
-                INSERT INTO conversation_turns (conversation_id, turn_index, role, content, language, metadata)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (conversation_id, turn_index, role, content, language, meta_str),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO conversation_turns (conversation_id, turn_index, role, content, language, metadata)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (conversation_id, turn_index, role) DO UPDATE SET
+                        content = EXCLUDED.content,
+                        language = EXCLUDED.language,
+                        metadata = EXCLUDED.metadata
+                    """,
+                    (conversation_id, turn_index, role, content, language, meta_str),
+                )
+                conn.commit()
         finally:
             conn.close()
 
     def get_conversation_turns(self, conversation_id: str) -> List[Dict[str, Any]]:
+        """Retrieves ordered turns for a conversation from PostgreSQL."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                """
-                SELECT turn_index, role, content, language, metadata, created_at
-                FROM conversation_turns
-                WHERE conversation_id = ?
-                ORDER BY turn_index ASC, id ASC
-                """,
-                (conversation_id,),
-            )
-            rows = cursor.fetchall()
-            results = []
-            for r in rows:
-                if hasattr(r, "keys"):
-                    results.append(dict(r))
-                else:
-                    results.append({
-                        "turn_index": r[0],
-                        "role": r[1],
-                        "content": r[2],
-                        "language": r[3],
-                        "metadata": json.loads(r[4]) if isinstance(r[4], str) else r[4],
-                        "created_at": r[5],
-                    })
-            return results
+            with conn.cursor(row_factory=dict_row) as cursor:
+                cursor.execute(
+                    """
+                    SELECT turn_index, role, content, language, metadata, created_at
+                    FROM conversation_turns
+                    WHERE conversation_id = %s
+                    ORDER BY turn_index ASC, id ASC
+                    """,
+                    (conversation_id,),
+                )
+                rows = cursor.fetchall()
+                results = []
+                for r in rows:
+                    d = dict(r)
+                    if isinstance(d.get("metadata"), str):
+                        try:
+                            d["metadata"] = json.loads(d["metadata"])
+                        except Exception:
+                            pass
+                    results.append(d)
+                return results
         finally:
             conn.close()
 
@@ -114,56 +122,60 @@ class PostgresRepository:
         unresolved_questions: List[str],
         decisive_topic: Optional[str] = None,
     ) -> None:
+        """Upserts active incident case state in PostgreSQL."""
         self.create_or_get_conversation(conversation_id)
         conn = get_db_connection()
-        cursor = conn.cursor()
         facts_json = json.dumps(confirmed_facts)
         questions_json = json.dumps(unresolved_questions)
         try:
-            cursor.execute(
-                """
-                INSERT INTO case_state (conversation_id, threat_category, confirmed_facts, unresolved_questions, decisive_topic, last_updated)
-                VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-                ON CONFLICT(conversation_id) DO UPDATE SET
-                    threat_category = excluded.threat_category,
-                    confirmed_facts = excluded.confirmed_facts,
-                    unresolved_questions = excluded.unresolved_questions,
-                    decisive_topic = excluded.decisive_topic,
-                    last_updated = CURRENT_TIMESTAMP
-                """,
-                (conversation_id, threat_category, facts_json, questions_json, decisive_topic),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO case_state (
+                        conversation_id, threat_category, confirmed_facts,
+                        unresolved_questions, decisive_topic, last_updated
+                    )
+                    VALUES (%s, %s, %s, %s, %s, CURRENT_TIMESTAMP)
+                    ON CONFLICT (conversation_id) DO UPDATE SET
+                        threat_category = EXCLUDED.threat_category,
+                        confirmed_facts = EXCLUDED.confirmed_facts,
+                        unresolved_questions = EXCLUDED.unresolved_questions,
+                        decisive_topic = EXCLUDED.decisive_topic,
+                        last_updated = CURRENT_TIMESTAMP
+                    """,
+                    (conversation_id, threat_category, facts_json, questions_json, decisive_topic),
+                )
+                conn.commit()
         finally:
             conn.close()
 
     def get_case_state(self, conversation_id: str) -> Dict[str, Any]:
+        """Fetches active case state for a conversation from PostgreSQL."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                "SELECT threat_category, confirmed_facts, unresolved_questions, decisive_topic FROM case_state WHERE conversation_id = ?",
-                (conversation_id,),
-            )
-            row = cursor.fetchone()
-            if not row:
-                return {
-                    "threat_category": None,
-                    "confirmed_facts": {},
-                    "unresolved_questions": [],
-                    "decisive_topic": None,
-                }
-            if hasattr(row, "keys"):
+            with conn.cursor(row_factory=dict_row) as cursor:
+                cursor.execute(
+                    """
+                    SELECT threat_category, confirmed_facts, unresolved_questions, decisive_topic
+                    FROM case_state
+                    WHERE conversation_id = %s
+                    """,
+                    (conversation_id,),
+                )
+                row = cursor.fetchone()
+                if not row:
+                    return {
+                        "threat_category": None,
+                        "confirmed_facts": {},
+                        "unresolved_questions": [],
+                        "decisive_topic": None,
+                    }
                 d = dict(row)
-                d["confirmed_facts"] = json.loads(d["confirmed_facts"]) if isinstance(d["confirmed_facts"], str) else d["confirmed_facts"]
-                d["unresolved_questions"] = json.loads(d["unresolved_questions"]) if isinstance(d["unresolved_questions"], str) else d["unresolved_questions"]
+                if isinstance(d.get("confirmed_facts"), str):
+                    d["confirmed_facts"] = json.loads(d["confirmed_facts"])
+                if isinstance(d.get("unresolved_questions"), str):
+                    d["unresolved_questions"] = json.loads(d["unresolved_questions"])
                 return d
-            return {
-                "threat_category": row[0],
-                "confirmed_facts": json.loads(row[1]) if isinstance(row[1], str) else row[1],
-                "unresolved_questions": json.loads(row[2]) if isinstance(row[2], str) else row[2],
-                "decisive_topic": row[3],
-            }
         finally:
             conn.close()
 
@@ -182,35 +194,52 @@ class PostgresRepository:
         embedding: List[float],
         model_id: str,
     ) -> None:
+        """Stores a guidance document, chunk, and pgvector embedding in PostgreSQL."""
         conn = get_db_connection()
-        cursor = conn.cursor()
-        emb_json = json.dumps(embedding)
+        emb_literal = _vector_to_pg_literal(embedding)
         try:
-            # Insert or replace doc
-            cursor.execute(
-                """
-                INSERT OR IGNORE INTO knowledge_docs (id, doc_id, title, url, language, topic, audience)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-                """,
-                (doc_id, doc_id, title, url, language, topic, audience),
-            )
-            # Insert or replace chunk
-            cursor.execute(
-                """
-                INSERT OR REPLACE INTO semantic_chunks (id, doc_id, chunk_index, section_header, chunk_text, token_count)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (chunk_id, doc_id, chunk_index, section_header, chunk_text, len(chunk_text.split())),
-            )
-            # Insert or replace embedding
-            cursor.execute(
-                """
-                INSERT OR REPLACE INTO vector_embeddings (chunk_id, embedding, model_id, dimension)
-                VALUES (?, ?, ?, ?)
-                """,
-                (chunk_id, emb_json, model_id, len(embedding)),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                # 1. Upsert knowledge_docs
+                cursor.execute(
+                    """
+                    INSERT INTO knowledge_docs (id, doc_id, title, url, language, topic, audience)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (doc_id) DO UPDATE SET
+                        title = EXCLUDED.title,
+                        url = EXCLUDED.url,
+                        language = EXCLUDED.language,
+                        topic = EXCLUDED.topic,
+                        audience = EXCLUDED.audience
+                    """,
+                    (doc_id, doc_id, title, url, language, topic, audience),
+                )
+
+                # 2. Upsert semantic_chunks
+                cursor.execute(
+                    """
+                    INSERT INTO semantic_chunks (id, doc_id, chunk_index, section_header, chunk_text, token_count)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET
+                        section_header = EXCLUDED.section_header,
+                        chunk_text = EXCLUDED.chunk_text,
+                        token_count = EXCLUDED.token_count
+                    """,
+                    (chunk_id, doc_id, chunk_index, section_header, chunk_text, len(chunk_text.split())),
+                )
+
+                # 3. Upsert vector_embeddings using native vector(768)
+                cursor.execute(
+                    """
+                    INSERT INTO vector_embeddings (chunk_id, embedding, model_id, dimension)
+                    VALUES (%s, %s::vector, %s, %s)
+                    ON CONFLICT (chunk_id) DO UPDATE SET
+                        embedding = EXCLUDED.embedding,
+                        model_id = EXCLUDED.model_id,
+                        dimension = EXCLUDED.dimension
+                    """,
+                    (chunk_id, emb_literal, model_id, len(embedding)),
+                )
+                conn.commit()
         finally:
             conn.close()
 
@@ -220,67 +249,66 @@ class PostgresRepository:
         top_k: int = 3,
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict[str, Any]]:
-        """Queries stored semantic chunks by cosine distance against query_embedding."""
+        """Queries stored semantic chunks strictly via native pgvector cosine distance (<=>).
+        
+        Zero in-Python similarity calculation. Zero keyword matching.
+        Leverages PostgreSQL HNSW index on vector_embeddings.
+        """
         conn = get_db_connection()
-        cursor = conn.cursor()
+        emb_literal = _vector_to_pg_literal(query_embedding)
+        
+        where_clauses = []
+        params: List[Any] = [emb_literal]
+
+        if filters:
+            if "audience" in filters:
+                aud = filters["audience"]
+                where_clauses.append("(d.audience = %s OR d.audience = 'both')")
+                params.append(aud)
+            if "language" in filters:
+                lang = filters["language"]
+                where_clauses.append("d.language = %s")
+                params.append(lang)
+            if "topic" in filters:
+                where_clauses.append("d.topic = %s")
+                params.append(filters["topic"])
+
+        where_sql = ("WHERE " + " AND ".join(where_clauses)) if where_clauses else ""
+        
+        # Second occurrence of emb_literal for ORDER BY distance
+        params.append(emb_literal)
+        params.append(top_k)
+
+        query = f"""
+            SELECT 
+                c.id AS chunk_id,
+                c.doc_id,
+                c.chunk_text,
+                c.section_header,
+                d.title,
+                d.url,
+                d.language,
+                d.topic,
+                d.audience,
+                (1.0 - (v.embedding <=> %s::vector)) AS similarity_score
+            FROM semantic_chunks c
+            JOIN knowledge_docs d ON c.doc_id = d.doc_id
+            JOIN vector_embeddings v ON c.id = v.chunk_id
+            {where_sql}
+            ORDER BY v.embedding <=> %s::vector ASC
+            LIMIT %s;
+        """
+
         try:
-            cursor.execute("""
-                SELECT 
-                    c.id AS chunk_id,
-                    c.doc_id,
-                    c.chunk_text,
-                    c.section_header,
-                    d.title,
-                    d.url,
-                    d.language,
-                    d.topic,
-                    d.audience,
-                    v.embedding
-                FROM semantic_chunks c
-                JOIN knowledge_docs d ON c.doc_id = d.doc_id
-                JOIN vector_embeddings v ON c.id = v.chunk_id
-            """)
-            rows = cursor.fetchall()
-            scored: List[Tuple[float, Dict[str, Any]]] = []
-            for r in rows:
-                if hasattr(r, "keys"):
-                    d = dict(r)
-                else:
-                    d = {
-                        "chunk_id": r[0],
-                        "doc_id": r[1],
-                        "chunk_text": r[2],
-                        "section_header": r[3],
-                        "title": r[4],
-                        "url": r[5],
-                        "language": r[6],
-                        "topic": r[7],
-                        "audience": r[8],
-                        "embedding": r[9],
-                    }
-
-                # Apply metadata filter if specified
-                if filters:
-                    match = True
-                    for k, v in filters.items():
-                        if k == "audience":
-                            doc_aud = d.get("audience")
-                            if doc_aud != v and doc_aud != "both":
-                                match = False
-                                break
-                        elif d.get(k) != v:
-                            match = False
-                            break
-                    if not match:
-                        continue
-
-                target_emb = json.loads(d["embedding"]) if isinstance(d["embedding"], str) else d["embedding"]
-                sim = _cosine_similarity(query_embedding, target_emb)
-                d["similarity_score"] = sim
-                scored.append((sim, d))
-
-            scored.sort(key=lambda x: x[0], reverse=True)
-            return [item[1] for item in scored[:top_k]]
+            with conn.cursor(row_factory=dict_row) as cursor:
+                cursor.execute(query, tuple(params))
+                rows = cursor.fetchall()
+                results = []
+                for r in rows:
+                    item = dict(r)
+                    item["similarity_score"] = float(item["similarity_score"])
+                    results.append(item)
+                return results
         finally:
             conn.close()
 
@@ -297,31 +325,32 @@ class PostgresRepository:
         latency_ms: float,
         evaluation_outcome: str,
     ) -> None:
+        """Logs diagnostic metadata for RAG retrieval into PostgreSQL retrieval_audit."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                """
-                INSERT INTO retrieval_audit (
-                    conversation_id, turn_index, contextual_query_redacted,
-                    embedding_model, embedding_version, retrieved_doc_ids,
-                    similarity_scores, metadata_filters, latency_ms, evaluation_outcome
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    conversation_id,
-                    turn_index,
-                    query_redacted,
-                    embedding_model,
-                    embedding_version,
-                    json.dumps(retrieved_doc_ids),
-                    json.dumps([round(s, 4) for s in similarity_scores]),
-                    json.dumps(metadata_filters or {}),
-                    latency_ms,
-                    evaluation_outcome,
-                ),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO retrieval_audit (
+                        conversation_id, turn_index, contextual_query_redacted,
+                        embedding_model, embedding_version, retrieved_doc_ids,
+                        similarity_scores, metadata_filters, latency_ms, evaluation_outcome
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        conversation_id,
+                        turn_index,
+                        query_redacted,
+                        embedding_model,
+                        embedding_version,
+                        json.dumps(retrieved_doc_ids),
+                        json.dumps([round(s, 4) for s in similarity_scores]),
+                        json.dumps(metadata_filters or {}),
+                        latency_ms,
+                        evaluation_outcome,
+                    ),
+                )
+                conn.commit()
         finally:
             conn.close()
 
@@ -337,31 +366,32 @@ class PostgresRepository:
         twin_decisive_question: Optional[str] = None,
         rationale: str = "",
     ) -> None:
+        """Records security decision outcome in PostgreSQL decision_outcomes."""
         self.create_or_get_conversation(conversation_id)
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                """
-                INSERT INTO decision_outcomes (
-                    conversation_id, turn_index, action, risk_level,
-                    urgency, requires_specialist, escalation_target,
-                    twin_decisive_question, rationale
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    conversation_id,
-                    turn_index,
-                    action,
-                    risk_level,
-                    urgency,
-                    1 if requires_specialist else 0,
-                    escalation_target,
-                    twin_decisive_question,
-                    rationale,
-                ),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO decision_outcomes (
+                        conversation_id, turn_index, action, risk_level,
+                        urgency, requires_specialist, escalation_target,
+                        twin_decisive_question, rationale
+                    ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                    """,
+                    (
+                        conversation_id,
+                        turn_index,
+                        action,
+                        risk_level,
+                        urgency,
+                        requires_specialist,
+                        escalation_target,
+                        twin_decisive_question,
+                        rationale,
+                    ),
+                )
+                conn.commit()
         finally:
             conn.close()
 
@@ -372,17 +402,18 @@ class PostgresRepository:
         telemetry_granted: bool,
         purpose: str = "incident_resolution",
     ) -> None:
+        """Records GDPR consent in PostgreSQL consent_records."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                """
-                INSERT INTO consent_records (user_id, conversation_id, telemetry_granted, processing_purpose)
-                VALUES (?, ?, ?, ?)
-                """,
-                (user_id, conversation_id, 1 if telemetry_granted else 0, purpose),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO consent_records (user_id, conversation_id, telemetry_granted, processing_purpose)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (user_id, conversation_id, telemetry_granted, purpose),
+                )
+                conn.commit()
         finally:
             conn.close()
 
@@ -393,16 +424,17 @@ class PostgresRepository:
         severity: str,
         payload: Dict[str, Any],
     ) -> None:
+        """Records security audit events into PostgreSQL security_audit_events."""
         conn = get_db_connection()
-        cursor = conn.cursor()
         try:
-            cursor.execute(
-                """
-                INSERT INTO security_audit_events (conversation_id, event_type, severity, payload)
-                VALUES (?, ?, ?, ?)
-                """,
-                (conversation_id, event_type, severity, json.dumps(payload)),
-            )
-            conn.commit()
+            with conn.cursor() as cursor:
+                cursor.execute(
+                    """
+                    INSERT INTO security_audit_events (conversation_id, event_type, severity, payload)
+                    VALUES (%s, %s, %s, %s)
+                    """,
+                    (conversation_id, event_type, severity, json.dumps(payload)),
+                )
+                conn.commit()
         finally:
             conn.close()

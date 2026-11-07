@@ -1,13 +1,14 @@
 """Ingestion pipeline for Since AI Knowledge Corpus.
 
 Chunks the 56 official DNA guidance articles, generates dense vector embeddings
-via DenseEmbedder, and stores them in PostgreSQL with pgvector (or fallback store).
+via DenseEmbedder, and stores them in PostgreSQL with pgvector (vector(768)).
+Strict zero-lexical policy: pure dense vectors and relational storage in PostgreSQL.
 """
 
 from __future__ import annotations
 import logging
 import time
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from src.rag.chunker import SemanticChunker
 from src.rag.embedder import DenseEmbedder
@@ -18,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 def ingest_guidance_corpus(corpus_path: Optional[str] = None) -> int:
-    """Ingests guidance corpus chunks and dense embeddings into the repository.
+    """Ingests guidance corpus chunks and dense embeddings into PostgreSQL.
     
     Returns total number of semantic chunks ingested.
     """
@@ -47,9 +48,11 @@ def ingest_guidance_corpus(corpus_path: Optional[str] = None) -> int:
             model_id=embedder.model_identifier,
         )
         count += 1
+        if count % 20 == 0:
+            logger.info("Ingested %d semantic chunks into PostgreSQL...", count)
 
     elapsed = time.time() - start_time
-    logger.info("Ingestion completed: %d chunks embedded and indexed in %.2fs", count, elapsed)
+    logger.info("Ingestion completed: %d chunks embedded and indexed in PostgreSQL in %.2fs", count, elapsed)
     return count
 
 
