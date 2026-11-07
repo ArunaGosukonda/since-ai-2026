@@ -40,3 +40,4 @@ mt_sample.jsonl
 dist/
 build/
 *.egg-info/
+.gcp-github-deployer-key.json
