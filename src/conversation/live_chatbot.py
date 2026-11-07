@@ -73,45 +73,68 @@ class LiveChatbot:
         facts = get_facts(session_id)
         
         # Check if this message answers a pending decisive question
-        last_bot_msg = next((m for m in reversed(history[:-1]) if m["role"] == "assistant"), None)
+        last_question_idx = None
+        for i in range(len(history) - 2, -1, -1):
+            if history[i]["role"] == "assistant" and history[i].get("msg_type") == "question":
+                last_question_idx = i
+                break
+            elif history[i]["role"] == "assistant" and history[i].get("msg_type") == "final":
+                break
+
+        is_answering_question = (last_question_idx is not None)
         
         lang = _detect_language(message)
         audience = _detect_audience(message)
-        journey = _detect_journey(history[0]["content"] if history else message)
-        create_or_update_session(session_id, journey=journey, audience=audience, language=lang)
-        
-        # If user is answering a previous question:
-        if last_bot_msg and last_bot_msg.get("msg_type") == "question":
-            # Extract topic or store answer
-            facts["user_answer"] = message
+
+        if is_answering_question:
+            # Continue ongoing journey with accumulated facts
+            inquiry_msg = history[last_question_idx - 1]["content"] if last_question_idx > 0 else history[0]["content"]
+            journey = _detect_journey(inquiry_msg)
+            opening_text = inquiry_msg
+            active_facts = facts
+            active_facts["user_answer"] = message
             t = message.lower()
             if matches_any(t, [r"kyllä|joo|olen|syötin|annoin|maksoin|yes|did|gave|paid|ja"]):
-                facts["confirmed_risk"] = "yes"
+                active_facts["confirmed_risk"] = "yes"
             else:
-                facts["confirmed_risk"] = "no"
+                active_facts["confirmed_risk"] = "no"
             set_fact(session_id, "user_answer", message)
-            set_fact(session_id, "confirmed_risk", facts["confirmed_risk"])
+            set_fact(session_id, "confirmed_risk", active_facts["confirmed_risk"])
+        else:
+            # Independent new question or new inquiry
+            journey = _detect_journey(message)
+            opening_text = message
+            active_facts = {}
 
-        # Grounding with RAG
-        rag_docs = self.rag.retrieve(query=f"{history[0]['content']} {message}", top_k=3, audience=audience)
+        create_or_update_session(session_id, journey=journey, audience=audience, language=lang)
+
+        # Grounding with dense vector RAG
+        rag_docs = self.rag.retrieve(
+            query=message,
+            top_k=3,
+            audience=audience,
+            language=lang,
+            conversation_history=history[-3:] if is_answering_question else None,
+            confirmed_facts=active_facts,
+        )
         
         # Synthesize a case dictionary for the fused context
-        links = re.findall(r"https?://[^\s]+", history[0]["content"])
+        links = re.findall(r"https?://[^\s]+", opening_text)
         case_dict = {
             "case_id": session_id,
-            "opening_message": history[0]["content"],
+            "opening_message": opening_text,
             "journey": journey,
             "audience": audience,
             "language": lang,
             "signals": {
                 "artifact": {
                     "type": "sms" if journey == "suspicious_message" else "call" if journey == "suspicious_call" else "email",
-                    "body": history[0]["content"],
+                    "body": opening_text,
                     "links": links
                 },
                 "link_check": {"verdict": "malicious"} if links else None,
                 "subscription": {
-                    "network_status": {"service": "no_service" if "ei kenttää" in history[0]["content"].lower() else "normal"}
+                    "network_status": {"service": "no_service" if "ei kenttää" in opening_text.lower() else "normal"}
                 },
                 "device": {
                     "summary": {"platform": "mobile"}
@@ -119,13 +142,13 @@ class LiveChatbot:
             }
         }
 
-        ctx = fuse_signals(case_dict, facts)
+        ctx = fuse_signals(case_dict, active_facts)
         
         # Check for decisive question
-        decisive = detect_decisive_question(ctx, facts)
+        decisive = detect_decisive_question(ctx, active_facts)
         
         # If decisive question is needed and not yet answered:
-        if decisive and not facts.get("user_answer"):
+        if decisive and not active_facts.get("user_answer"):
             topic, _ = decisive
             from src.decision.twin_resolver import QUESTIONS
             q_topic_dict = QUESTIONS.get(topic, {})
@@ -152,7 +175,7 @@ class LiveChatbot:
             }
 
         # Otherwise, resolve to final advice in user's language
-        rec = self.selector.decide(ctx, facts, mode="multi_turn")
+        rec = self.selector.decide(ctx, active_facts, mode="multi_turn")
         advice_text_primary, steps_primary, _, _ = generate_response(
             ctx=ctx,
             action=rec.primary_action,

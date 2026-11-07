@@ -7,7 +7,7 @@ Composes localized, jargon-free, grounded advice adhering strictly to:
 - Zero unsafe claims
 """
 from typing import Any, Dict, List, Optional, Tuple
-from src.intelligence.signal_fusion import FusedContext
+from src.intelligence.signal_fusion import FusedContext, matches_any
 
 # Canonical phrases for each step in FI, EN, SV
 # Tested against dsakit/textcheck.py
@@ -236,6 +236,20 @@ def generate_response(
             advice_text = "Bra att du stängde sidan. Att bara öppna och stänga en sida utan att skriva in något orsakar sällan skada, så du behöver inte spärra kortet. Radera meddelandet från enheten och öppna inte länken igen."
         else:
             advice_text = "Good that you closed the page. Just opening and closing a page without typing anything rarely causes harm, so there is no need to block your card. Delete the message from your device and do not open the link again."
+    elif action == "verify_via_official_channel" and matches_any(ctx.full_text, [r"kaveri|ystävä|tuttu|omainen|perhe|äiti|isä|lapsi|friend|mum|dad|relative|family|child|vän|kompis|släkting|mamma|pappa|barn"]) and matches_any(ctx.full_text, [r"salasa|koodi|tunnus|pin|raha|maksa|password|credential|code|pin|money|pay|låna|lösenord|kod|pengar"]):
+        if lang == "fi":
+            advice_text = "Älä koskaan luovuta salasanoja tai vahvistuskoodeja viestillä tai puhelimessa. Ystävän tai perheenjäsenen tili voi olla kaapattu. Soita suoraan tuttuun numeroon, jonka jo tiedät, ja varmista asia toista kautta."
+        elif lang == "sv":
+            advice_text = "Dela aldrig lösenord eller verifieringskoder via meddelande eller telefon. En väns eller familjemedlems konto kan vara kapat. Ring direkt på ett nummer du redan känner till för att kontrollera saken innan du gör något."
+        else:
+            advice_text = "Never share passwords, verification codes, or PINs by message or phone. A friend's or family member's account may be compromised. Call them directly on a phone number you already know to verify before taking any action."
+    elif action == "verify_via_official_channel" and matches_any(ctx.full_text, [r"salasa|password|lösenord"]):
+        if lang == "fi":
+            advice_text = "Älä koskaan luovuta salasanaasi tai tunnuksiasi viestitse tai puhelimessa. Palveluntarjoajat tai tutut eivät koskaan pyydä salasanaasi. Tarkista asia aina virallisen palvelun kautta tai soita tuttuun numeroon."
+        elif lang == "sv":
+            advice_text = "Dela aldrig ditt lösenord eller inloggningsuppgifter via meddelande eller telefon. Seriösa tjänster eller kontakter ber aldrig om ditt lösenord. Kontrollera alltid via den officiella tjänsten eller ring ett känt nummer."
+        else:
+            advice_text = "Never share your password or login details via message or phone. Legitimate services and contacts will never ask for your password. Always verify the request through official channels or a known phone number."
     else:
         advice_text = EXPLANATIONS.get(action, EXPLANATIONS["verify_via_official_channel"])[lang]
     

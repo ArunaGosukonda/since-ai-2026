@@ -234,6 +234,7 @@ class PostgresRepository:
                     d.url,
                     d.language,
                     d.topic,
+                    d.audience,
                     v.embedding
                 FROM semantic_chunks c
                 JOIN knowledge_docs d ON c.doc_id = d.doc_id
@@ -254,14 +255,20 @@ class PostgresRepository:
                         "url": r[5],
                         "language": r[6],
                         "topic": r[7],
-                        "embedding": r[8],
+                        "audience": r[8],
+                        "embedding": r[9],
                     }
 
                 # Apply metadata filter if specified
                 if filters:
                     match = True
                     for k, v in filters.items():
-                        if d.get(k) != v:
+                        if k == "audience":
+                            doc_aud = d.get("audience")
+                            if doc_aud != v and doc_aud != "both":
+                                match = False
+                                break
+                        elif d.get(k) != v:
                             match = False
                             break
                     if not match:

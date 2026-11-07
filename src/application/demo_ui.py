@@ -11,7 +11,7 @@ Features:
      - Swedish input -> Swedish response + Translated English response.
      - English input -> English response.
   6. All buttons and UI controls in English.
-  7. BM25 RAG Grounding over 56 official DNA guidance articles.
+  7. Contextual Dense Vector RAG Grounding (pgvector) over 56 official DNA guidance articles.
 """
 import argparse
 import http.server
@@ -448,7 +448,7 @@ function renderAssistantResponse(data) {
   if (data.rag_docs && data.rag_docs.length > 0) {
     ragHtml = `
       <div class="rag-panel">
-        <div class="rag-panel-title">&#128214; Official DNA Security Guidance Grounding (BM25 RAG):</div>
+        <div class="rag-panel-title">&#128214; Official DNA Security Guidance Grounding (Contextual Dense Vector RAG - pgvector):</div>
         ${data.rag_docs.map(d => `
           <div class="rag-item">
             <div class="rag-item-title">${escapeHtml(d.title_primary || d.title_en)}</div>

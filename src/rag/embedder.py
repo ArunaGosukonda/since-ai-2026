@@ -115,9 +115,14 @@ class DenseEmbedder(EmbedderInterface):
                 "skadlig", "virus", "kapad", "infekterad", "installerat"
             ],
             "credential_compromise": [
-                "salasana", "tunnukset", "syötetty", "kirjautumiskoodi", "avainluku", "kirjautuminen",
-                "password", "credentials", "entered", "login", "code", "pin", "codes",
-                "lösenord", "inloggning", "koder", "angett"
+                "salasana", "tunnukset", "syötetty", "kirjautumiskoodi", "avainluku", "kirjautuminen", "koodi", "tunnusluku", "vahvistuskoodi", "pin-koodi",
+                "password", "credentials", "entered", "login", "code", "pin", "codes", "one-time code", "confirmation pin",
+                "lösenord", "inloggning", "koder", "angett", "engångskod"
+            ],
+            "family_and_social_impersonation": [
+                "kaveri", "ystävä", "tuttu", "omainen", "perhe", "äiti", "isä", "lapsi", "sukulainen", "pyytää", "kysyy",
+                "friend", "relative", "family", "mum", "dad", "child", "asking", "requesting", "asking for",
+                "vän", "kompis", "släkting", "mamma", "pappa", "barn", "frågar", "ber om"
             ],
             "operator_and_sim": [
                 "operaattori", "liittymä", "dna", "telia", "elisa", "lasku", "sim-kortti", "pin-koodi", "puk-koodi",
@@ -140,10 +145,10 @@ class DenseEmbedder(EmbedderInterface):
                 if term in text_lower:
                     weight += 2.0
             if weight > 0:
-                base_idx = idx * 45
-                for offset in range(45):
+                base_idx = idx * 40
+                for offset in range(40):
                     sub_idx = (base_idx + offset) % dim
-                    phase = (offset / 45.0) * math.pi
+                    phase = (offset / 40.0) * math.pi
                     vec[sub_idx] += weight * math.cos(phase)
 
         # 2. Continuous dense projection of character 3-grams and 4-grams across full 768 dimensions
