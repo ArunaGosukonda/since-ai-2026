@@ -41,6 +41,7 @@ export function IncomingCall({
   liveFlags = [],
   onDecline,
   onAnswer,
+  onSimulate,
 }: {
   lang: Lang;
   phase: CallPhase;
@@ -50,6 +51,7 @@ export function IncomingCall({
   liveFlags?: string[];
   onDecline: () => void;
   onAnswer: () => void;
+  onSimulate?: () => void;
 }) {
   if (phase === "ringing") return <Ringing lang={lang} onDecline={onDecline} onAnswer={onAnswer} />;
   return (
@@ -60,6 +62,7 @@ export function IncomingCall({
       stage={stage}
       liveFlags={liveFlags}
       onHangUp={onDecline}
+      onSimulate={onSimulate}
     />
   );
 }
@@ -110,6 +113,7 @@ function InCall({
   stage,
   liveFlags,
   onHangUp,
+  onSimulate,
 }: {
   lang: Lang;
   mic: CallMic;
@@ -117,6 +121,7 @@ function InCall({
   stage: Stage;
   liveFlags: string[];
   onHangUp: () => void;
+  onSimulate?: () => void;
 }) {
   const t = i18n[lang].call;
   // The whole call so far: a sender claim is only underlined once the caller also asks for something.
@@ -168,12 +173,23 @@ function InCall({
         </div>
       )}
       {(mic === "off" || mic === "unavailable") && (
-        <div
-          role="status"
-          data-testid="mic-unavailable"
-          className="mx-auto rounded-full border-2 border-ink-secondary/50 px-4 py-1 text-base font-bold text-ink-secondary"
-        >
-          {i18n[lang].pipe.micUnavailable}
+        <div className="flex flex-col items-center gap-2">
+          <div
+            role="status"
+            data-testid="mic-unavailable"
+            className="mx-auto rounded-full border-2 border-ink-secondary/50 px-4 py-1 text-sm font-bold text-ink-secondary"
+          >
+            {i18n[lang].pipe.micUnavailable}
+          </div>
+          {onSimulate && (
+            <button
+              type="button"
+              onClick={onSimulate}
+              className="rounded-full bg-scam px-4 py-1.5 text-xs font-bold text-white shadow hover:opacity-90 transition-opacity"
+            >
+              {lang === "fi" ? "Toista testisyntetisoitu puhelu" : "Simulate caller voice (Demo)"}
+            </button>
+          )}
         </div>
       )}
 

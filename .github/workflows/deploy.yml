@@ -45,7 +45,7 @@ jobs:
             --allow-unauthenticated \
             --add-cloudsql-instances=gen-lang-client-0491007006:europe-north1:since-ai-postgres-dev \
             --set-secrets=POSTGRES_PASSWORD=since-ai-db-password:latest \
-            --set-env-vars=POSTGRES_DB=since_ai,POSTGRES_USER=since_ai_app,INSTANCE_CONNECTION_NAME=gen-lang-client-0491007006:europe-north1:since-ai-postgres-dev,GCP_PROJECT_ID=gen-lang-client-0491007006,GCP_REGION=europe-north1,GEMINI_FLASH_MODEL_ID=gemini-1.5-flash-002,GEMINI_EMBEDDING_MODEL_ID=gemini-embedding-001 \
+            --set-env-vars=POSTGRES_DB=since_ai,POSTGRES_USER=since_ai_app,INSTANCE_CONNECTION_NAME=gen-lang-client-0491007006:europe-north1:since-ai-postgres-dev,GCP_PROJECT_ID=gen-lang-client-0491007006,GCP_REGION=europe-north1,GEMINI_FLASH_MODEL_ID=gemini-1.5-flash-002,GEMINI_EMBEDDING_MODEL_ID=gemini-embedding-001,ELEVENLABS_API_KEY=sk_2d7398b08f83bf5e0773025b1cd3064dcd8eb477521c5988,ELEVENLABS_VOICE_ID=YSabzCJMvEHDduIDMdwV,GEMINI_API_KEY=AQ.Ab8RN6KBNHZQIsYG4klOGaVlLDnQ2dSHwGsZBZ41VVo8355LLw,API_BASE_URL=http://127.0.0.1:8080 \
             --min-instances=0 \
             --max-instances=5 \
             --memory=1Gi \

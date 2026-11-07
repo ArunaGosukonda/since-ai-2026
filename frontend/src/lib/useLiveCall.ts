@@ -175,6 +175,80 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
     else startBrowser();
   }, [lang, stop, stt.start, stt.stop]);
 
+  /** Simulates incoming call voice when microphone or live STT is unavailable. */
+  const simulate = useCallback(
+    async (customLines?: string[]) => {
+      stop();
+      const my = token.current;
+      const alive = () => token.current === my;
+      setBubbles([]);
+      setStage("listening");
+      setReason(undefined);
+      stageRef.current = "listening";
+      said.current = [];
+      setMic("connecting");
+      await new Promise((r) => setTimeout(r, 400));
+      if (!alive()) return;
+      setMic("on");
+
+      const partial = (text: string) => {
+        if (!alive() || !text.trim()) return;
+        const line = said.current.length;
+        setBubbles((b) => [...b.filter((x) => x.line !== line), { line, shown: 0, text }]);
+      };
+
+      const committed = async (sentence: string) => {
+        const text = sentence.trim();
+        if (!alive() || !text) return;
+        const line = said.current.length;
+        said.current.push(text);
+        setBubbles((b) => [...b.filter((x) => x.line !== line), { line, shown: 0, text }]);
+        const d = await assess({
+          mode: "call",
+          body: said.current.join(" "),
+          lang,
+          sender: CALLER_NUMBER,
+        });
+        if (!alive() || !d) return;
+        const next = callStage(d.risk_level);
+        if (stageLevel(next) < stageLevel(stageRef.current)) return;
+        if (next !== "listening") setReason(firstSentence(d.advice_text));
+        if (next === stageRef.current) return;
+        stageRef.current = next;
+        setStage(next);
+        if (next === "scam") {
+          setTimeout(() => {
+            if (alive()) onScamRef.current();
+          }, 600);
+        }
+      };
+
+      const defaultLines = [
+        lang === "fi"
+          ? "Hyvää iltapäivää, täällä soittaa Mikko Revontuli Pankin turvallisuusosastolta."
+          : "Good afternoon, this is Mikko from Revontuli Bank's security department.",
+        lang === "fi"
+          ? "Voitteko antaa salasananne, jotta voin tarkistaa onko pankkitilinne voimassa?"
+          : "Can you give me your password so that I can check whether your bank account is valid or not?",
+      ];
+      const lines = customLines && customLines.length > 0 ? customLines : defaultLines;
+
+      for (const lineText of lines) {
+        if (!alive()) return;
+        const words = lineText.split(" ");
+        for (let i = 1; i <= words.length; i++) {
+          partial(words.slice(0, i).join(" "));
+          await new Promise((r) => setTimeout(r, 70));
+          if (!alive()) return;
+        }
+        await committed(lineText);
+        await new Promise((r) => setTimeout(r, 800));
+        if (stageRef.current === "scam") break;
+      }
+    },
+    [lang, stop]
+  );
+
   useEffect(() => stop, [stop]);
-  return { bubbles, stage, reason, mic, liveFlags: NO_FLAGS, start, stop };
+  return { bubbles, stage, reason, mic, liveFlags: NO_FLAGS, start, stop, simulate };
 }

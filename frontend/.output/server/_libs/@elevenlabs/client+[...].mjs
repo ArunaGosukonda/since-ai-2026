@@ -1,3 +1,198 @@
+import processModule from "node:process";
+//#region node_modules/unenv/dist/runtime/_internal/utils.mjs
+/* @__NO_SIDE_EFFECTS__ */
+function createNotImplementedError(name) {
+	return /* @__PURE__ */ new Error(`[unenv] ${name} is not implemented yet!`);
+}
+//#endregion
+//#region node_modules/unenv/dist/runtime/web/performance/_polyfills.mjs
+var _timeOrigin = globalThis.performance?.timeOrigin ?? Date.now();
+var _performanceNow = globalThis.performance?.now ? globalThis.performance.now.bind(globalThis.performance) : () => Date.now() - _timeOrigin;
+var _supportedEntryTypes = [
+	"event",
+	"mark",
+	"measure",
+	"resource"
+];
+var _PerformanceEntry = class {
+	__unenv__ = true;
+	detail;
+	entryType = "event";
+	name;
+	startTime;
+	constructor(name, options) {
+		this.name = name;
+		this.startTime = options?.startTime || _performanceNow();
+		this.detail = options?.detail;
+	}
+	get duration() {
+		return _performanceNow() - this.startTime;
+	}
+	toJSON() {
+		return {
+			name: this.name,
+			entryType: this.entryType,
+			startTime: this.startTime,
+			duration: this.duration,
+			detail: this.detail
+		};
+	}
+};
+var _PerformanceMark = class extends _PerformanceEntry {
+	entryType = "mark";
+};
+var _PerformanceMeasure = class extends _PerformanceEntry {
+	entryType = "measure";
+};
+var _PerformanceResourceTiming = class extends _PerformanceEntry {
+	entryType = "resource";
+	serverTiming = [];
+	connectEnd = 0;
+	connectStart = 0;
+	decodedBodySize = 0;
+	domainLookupEnd = 0;
+	domainLookupStart = 0;
+	encodedBodySize = 0;
+	fetchStart = 0;
+	initiatorType = "";
+	name = "";
+	nextHopProtocol = "";
+	redirectEnd = 0;
+	redirectStart = 0;
+	requestStart = 0;
+	responseEnd = 0;
+	responseStart = 0;
+	secureConnectionStart = 0;
+	startTime = 0;
+	transferSize = 0;
+	workerStart = 0;
+	responseStatus = 0;
+};
+var _PerformanceObserver = class {
+	__unenv__ = true;
+	static supportedEntryTypes = _supportedEntryTypes;
+	_callback = null;
+	constructor(callback) {
+		this._callback = callback;
+	}
+	takeRecords() {
+		return [];
+	}
+	disconnect() {
+		throw /* @__PURE__ */ createNotImplementedError("PerformanceObserver.disconnect");
+	}
+	observe(options) {
+		throw /* @__PURE__ */ createNotImplementedError("PerformanceObserver.observe");
+	}
+};
+var _PerformanceObserverEntryList = class {
+	__unenv__ = true;
+	getEntries() {
+		return [];
+	}
+	getEntriesByName(_name, _type) {
+		return [];
+	}
+	getEntriesByType(type) {
+		return [];
+	}
+};
+var _Performance = class {
+	__unenv__ = true;
+	timeOrigin = _timeOrigin;
+	eventCounts = /* @__PURE__ */ new Map();
+	_entries = [];
+	_resourceTimingBufferSize = 0;
+	navigation = void 0;
+	timing = void 0;
+	onresourcetimingbufferfull = null;
+	now() {
+		if (this.timeOrigin === _timeOrigin) return _performanceNow();
+		return Date.now() - this.timeOrigin;
+	}
+	clearMarks(markName) {
+		this._entries = markName ? this._entries.filter((e) => e.name !== markName) : this._entries.filter((e) => e.entryType !== "mark");
+	}
+	clearMeasures(measureName) {
+		this._entries = measureName ? this._entries.filter((e) => e.name !== measureName) : this._entries.filter((e) => e.entryType !== "measure");
+	}
+	clearResourceTimings() {
+		this._entries = this._entries.filter((e) => e.entryType !== "resource" || e.entryType !== "navigation");
+	}
+	getEntries() {
+		return this._entries;
+	}
+	getEntriesByName(name, type) {
+		return this._entries.filter((e) => e.name === name && (!type || e.entryType === type));
+	}
+	getEntriesByType(type) {
+		return this._entries.filter((e) => e.entryType === type);
+	}
+	mark(name, options) {
+		const entry = new _PerformanceMark(name, options);
+		this._entries.push(entry);
+		return entry;
+	}
+	measure(measureName, startOrMeasureOptions, endMark) {
+		let start;
+		let end;
+		if (typeof startOrMeasureOptions === "string") {
+			start = this.getEntriesByName(startOrMeasureOptions, "mark")[0]?.startTime;
+			end = this.getEntriesByName(endMark, "mark")[0]?.startTime;
+		} else {
+			start = Number.parseFloat(startOrMeasureOptions?.start) || this.now();
+			end = Number.parseFloat(startOrMeasureOptions?.end) || this.now();
+		}
+		const entry = new _PerformanceMeasure(measureName, {
+			startTime: start,
+			detail: {
+				start,
+				end
+			}
+		});
+		this._entries.push(entry);
+		return entry;
+	}
+	setResourceTimingBufferSize(maxSize) {
+		this._resourceTimingBufferSize = maxSize;
+	}
+	toJSON() {
+		return this;
+	}
+	addEventListener(type, listener, options) {
+		throw /* @__PURE__ */ createNotImplementedError("Performance.addEventListener");
+	}
+	removeEventListener(type, listener, options) {
+		throw /* @__PURE__ */ createNotImplementedError("Performance.removeEventListener");
+	}
+	dispatchEvent(event) {
+		throw /* @__PURE__ */ createNotImplementedError("Performance.dispatchEvent");
+	}
+};
+//#endregion
+//#region node_modules/unenv/dist/runtime/web/performance/index.mjs
+var PerformanceEntry = globalThis.PerformanceEntry || _PerformanceEntry;
+var PerformanceMark = globalThis.PerformanceMark || _PerformanceMark;
+var PerformanceMeasure = globalThis.PerformanceMeasure || _PerformanceMeasure;
+var PerformanceResourceTiming = globalThis.PerformanceResourceTiming || _PerformanceResourceTiming;
+var PerformanceObserver = globalThis.PerformanceObserver || _PerformanceObserver;
+var Performance = globalThis.Performance || _Performance;
+var PerformanceObserverEntryList = globalThis.PerformanceObserverEntryList || _PerformanceObserverEntryList;
+var performance = globalThis.performance && "addEventListener" in globalThis.performance ? globalThis.performance : new _Performance();
+//#endregion
+//#region node_modules/unenv/dist/runtime/polyfill/performance.mjs
+globalThis.performance ||= performance;
+globalThis.Performance ||= Performance;
+globalThis.PerformanceEntry ||= PerformanceEntry;
+globalThis.PerformanceMark ||= PerformanceMark;
+globalThis.PerformanceMeasure ||= PerformanceMeasure;
+globalThis.PerformanceObserver ||= PerformanceObserver;
+globalThis.PerformanceObserverEntryList ||= PerformanceObserverEntryList;
+globalThis.PerformanceResourceTiming ||= PerformanceResourceTiming;
+var performance_default = globalThis.performance;
+//#endregion
+//#region node_modules/unenv/dist/runtime/polyfill/globalthis.mjs
+var globalthis_default = globalThis;
 Object.freeze({
 	name: "js_sdk",
 	version: "1.35.0"
@@ -512,7 +707,7 @@ function varint32read() {
 }
 function makeInt64Support() {
 	const dv = /* @__PURE__ */ new DataView(/* @__PURE__ */ new ArrayBuffer(8));
-	if (typeof BigInt === "function" && typeof dv.getBigInt64 === "function" && typeof dv.getBigUint64 === "function" && typeof dv.setBigInt64 === "function" && typeof dv.setBigUint64 === "function" && (typeof process != "object" || typeof process.env != "object" || process.env.BUF_BIGINT_DISABLE !== "1")) {
+	if (typeof BigInt === "function" && typeof dv.getBigInt64 === "function" && typeof dv.getBigUint64 === "function" && typeof dv.setBigInt64 === "function" && typeof dv.setBigUint64 === "function" && (typeof processModule != "object" || typeof processModule.env != "object" || processModule.env.BUF_BIGINT_DISABLE !== "1")) {
 		const MIN = BigInt("-9223372036854775808"), MAX = BigInt("9223372036854775807"), UMIN = BigInt("0"), UMAX = BigInt("18446744073709551615");
 		return {
 			zero: BigInt(0),
@@ -11454,7 +11649,7 @@ function extractProjectFromUrl(serverUrl) {
 	return serverUrl.hostname.split(".")[0];
 }
 function getLKReactNativeInfo() {
-	if (global && global.LiveKitReactNativeGlobal) return global.LiveKitReactNativeGlobal;
+	if (globalthis_default && globalthis_default.LiveKitReactNativeGlobal) return globalthis_default.LiveKitReactNativeGlobal;
 }
 function getReactNativeOs() {
 	if (!isReactNative()) return;
@@ -14876,9 +15071,9 @@ var SignalClient = class {
 						const redactedUrl = new URL(rtcUrl);
 						if (redactedUrl.searchParams.has("access_token")) redactedUrl.searchParams.set("access_token", "<redacted>");
 						if (this.ws) {
-							const startClose = performance.now();
+							const startClose = performance_default.now();
 							yield this.teardownTransport("replaced by a new connection attempt");
-							this.log.debug("closed previous ws connection in ".concat(performance.now() - startClose, "ms"));
+							this.log.debug("closed previous ws connection in ".concat(performance_default.now() - startClose, "ms"));
 						}
 						if (alreadyAborted) {
 							this.log.debug("signal connect abandoned after tearing down the previous transport");
@@ -16850,7 +17045,7 @@ var PCTransport = class extends eventsExports.EventEmitter {
 	connectionSetupTimeEstimateMs() {
 		if (this.connectionSetupTimeMs !== void 0) return this.connectionSetupTimeMs;
 		if (this.connectionStartedAt === void 0) return;
-		return Math.round(performance.now() - this.connectionStartedAt);
+		return Math.round(performance_default.now() - this.connectionStartedAt);
 	}
 	setConfiguration(rtcConfig) {
 		var _a;
@@ -20095,7 +20290,7 @@ var RTCEngine = class extends eventsExports.EventEmitter {
 				_this2.maxJoinAttempts = opts.maxRetries;
 				try {
 					_this2.joinAttempts += 1;
-					_this2.joinStartedAt = performance.now();
+					_this2.joinStartedAt = performance_default.now();
 					_this2.setupSignalClientCallbacks();
 					const sendOfferWithJoin = !useV0Path && isPublisherOfferWithJoinSupported();
 					let offerProto;
@@ -20312,7 +20507,7 @@ var RTCEngine = class extends eventsExports.EventEmitter {
 				].includes(publisherState)) this.publisherConnectionPromise = void 0;
 				if (connectionState === PCTransportState.CONNECTED) {
 					if (this.joinStartedAt !== void 0) {
-						const setupTimeMs = Math.round(performance.now() - this.joinStartedAt);
+						const setupTimeMs = Math.round(performance_default.now() - this.joinStartedAt);
 						this.joinStartedAt = void 0;
 						this.log.info("connection setup took ".concat(setupTimeMs, " ms"));
 						(_a = this.pcManager) === null || _a === void 0 || _a.publisher.setConnectionSetupTime(setupTimeMs);
@@ -25675,7 +25870,7 @@ var LocalParticipant = class extends Participant {
 					try {
 						let isRejected = false;
 						const requestId = yield this.engine.client.sendUpdateLocalMetadata((_a = metadata !== null && metadata !== void 0 ? metadata : this.metadata) !== null && _a !== void 0 ? _a : "", (_b = name !== null && name !== void 0 ? name : this.name) !== null && _b !== void 0 ? _b : "", attributes);
-						const startTime = performance.now();
+						const startTime = performance_default.now();
 						this.pendingSignalRequests.set(requestId, {
 							resolve,
 							reject: (error) => {
@@ -25688,7 +25883,7 @@ var LocalParticipant = class extends Participant {
 								attributes
 							}
 						});
-						while (performance.now() - startTime < 5e3 && !isRejected) {
+						while (performance_default.now() - startTime < 5e3 && !isRejected) {
 							if ((!name || this.name === name) && (!metadata || this.metadata === metadata) && (!attributes || Object.entries(attributes).every((_ref2) => {
 								let _ref3 = _slicedToArray(_ref2, 2), key = _ref3[0], value = _ref3[1];
 								return this.attributes[key] === value || value === "" && !this.attributes[key];

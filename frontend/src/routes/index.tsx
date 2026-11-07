@@ -239,6 +239,16 @@ function Demo() {
         openChatRef.current(null);
       } else if (k === "a") {
         if (screenRef.current === "incomingCall") answerRef.current();
+      } else if (k === "s") {
+        if (screenRef.current !== "incomingCall") {
+          startCallRef.current();
+          setTimeout(() => {
+            answerRef.current();
+            void call.simulate();
+          }, 300);
+        } else {
+          void call.simulate();
+        }
       } else if (k === "d") {
         if (screenRef.current === "incomingCall") declineRef.current();
       } else if (k === "r") {
@@ -303,6 +313,7 @@ function Demo() {
               liveFlags={call.liveFlags}
               onDecline={declineCall}
               onAnswer={answerCall}
+              onSimulate={call.simulate}
             />
           ) : screen === "inbox" ? (
             <div className="flex flex-1 flex-col pt-2">
@@ -398,7 +409,7 @@ function Demo() {
           </div>
           <ul className="mt-2 opacity-80">
             <li>0 home screen · R lock + reset</li>
-            <li>1 incoming call · A answer · D decline/hang up</li>
+            <li>1 incoming call · A answer · S simulate scam speech · D decline/hang up</li>
             <li>2 random dataset SMS</li>
             <li>4 DNA Assistant chat (dsa.pipeline)</li>
             <li>
