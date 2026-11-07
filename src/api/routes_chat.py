@@ -35,9 +35,9 @@ def handle_chat_message(req: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_consent_update(req: Dict[str, Any]) -> Dict[str, Any]:
-    user_id = req.get("user_id", "")
-    session_id = req.get("session_id", "")
-    granted = bool(req.get("telemetry_granted", False))
+    user_id = req.get("user_id") or None
+    session_id = req.get("session_id") or None
+    granted = bool(req.get("telemetry_granted", req.get("granted", False)))
     purpose = req.get("purpose", "incident_resolution")
     _repo.record_consent(user_id=user_id, conversation_id=session_id, telemetry_granted=granted, purpose=purpose)
     return {"status": "recorded", "user_id": user_id, "telemetry_granted": granted}

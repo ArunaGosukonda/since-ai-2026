@@ -412,12 +412,26 @@ class PostgresRepository:
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
+                clean_user_id = user_id.strip() if (user_id and isinstance(user_id, str)) else None
+                if clean_user_id:
+                    cursor.execute(
+                        "INSERT INTO users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING",
+                        (clean_user_id,),
+                    )
+                clean_conv_id = conversation_id.strip() if (conversation_id and isinstance(conversation_id, str)) else None
+                if clean_conv_id:
+                    # Ensure conversation exists if provided
+                    cursor.execute(
+                        "INSERT INTO conversations (id, user_id, status) VALUES (%s, %s, 'active') ON CONFLICT (id) DO NOTHING",
+                        (clean_conv_id, clean_user_id),
+                    )
+
                 cursor.execute(
                     """
                     INSERT INTO consent_records (user_id, conversation_id, telemetry_granted, processing_purpose)
                     VALUES (%s, %s, %s, %s)
                     """,
-                    (user_id, conversation_id, telemetry_granted, purpose),
+                    (clean_user_id, clean_conv_id, telemetry_granted, purpose),
                 )
                 conn.commit()
         finally:
