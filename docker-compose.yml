@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: sinceai-pgvector
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-sinceai}
+      POSTGRES_USER: ${POSTGRES_USER:-sinceai_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-sinceai_local_secret}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./src/db/migrations/001_initial_schema.sql:/docker-entrypoint-initdb.d/001_initial_schema.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-sinceai_user} -d ${POSTGRES_DB:-sinceai}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sinceai-backend
+    environment:
+      PORT: 8080
+      DATABASE_URL: postgresql://${POSTGRES_USER:-sinceai_user}:${POSTGRES_PASSWORD:-sinceai_local_secret}@db:5432/${POSTGRES_DB:-sinceai}
+      GCP_REGION: europe-north1
+      GEMINI_FLASH_MODEL_ID: ${GEMINI_FLASH_MODEL_ID:-gemini-1.5-flash-002}
+      GEMINI_EMBEDDING_MODEL_ID: ${GEMINI_EMBEDDING_MODEL_ID:-gemini-embedding-001}
+      ENVIRONMENT: local
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:

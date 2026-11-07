@@ -59,3 +59,9 @@ def evaluate_escalation(ctx: FusedContext, action: str, facts_text: str = "") ->
         return True, "human_advisor"
 
     return False, None
+
+
+class EscalationEngine:
+    """Class wrapper for escalation evaluation."""
+    def evaluate(self, ctx: FusedContext, action: str, facts_text: str = "") -> Tuple[bool, Optional[str]]:
+        return evaluate_escalation(ctx, action, facts_text)

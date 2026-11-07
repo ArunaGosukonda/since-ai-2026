@@ -118,3 +118,31 @@ def detect_decisive_question(ctx: FusedContext, facts: Optional[Dict[str, str]] 
             return "self_initiated", QUESTIONS["self_initiated"][lang]
 
     return None
+
+
+class TwinResolver:
+    """Class wrapper for twin ambiguity resolution."""
+
+    def resolve(self, text: str, signals: Any, facts: Dict[str, Any], lang: str = "fi") -> Dict[str, Any]:
+        from src.intelligence.signal_fusion import FusedContext
+        if not isinstance(signals, FusedContext):
+            ctx = FusedContext(
+                case_id="dynamic",
+                journey="suspicious_message",
+                audience="consumer",
+                language=lang,
+                full_text=text,
+            )
+        else:
+            ctx = signals
+
+        decisive = detect_decisive_question(ctx, facts, lang=lang)
+        if decisive:
+            topic, q = decisive
+            return {
+                "is_twin": True,
+                "resolved": False,
+                "topic": topic,
+                "decisive_question": q,
+            }
+        return {"is_twin": False, "resolved": True}

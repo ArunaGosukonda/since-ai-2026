@@ -1,0 +1,21 @@
+# Netlify configuration for Since AI Frontend
+# Role: Hosts static frontend assets only.
+# Sensitive data processing and database operations strictly run in Google Cloud Run (europe-north1, Finland).
+
+[build]
+  publish = "frontend"
+
+[[redirects]]
+  # Reverse proxy API requests to Google Cloud Run backend in europe-north1
+  from = "/api/*"
+  to = "https://sinceai-backend.a.run.app/api/:splat"
+  status = 200
+  force = false
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=()"

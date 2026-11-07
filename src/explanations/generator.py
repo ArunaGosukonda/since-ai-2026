@@ -267,3 +267,41 @@ def generate_response(
                 steps_list.append(step_str)
 
     return advice_text, steps_list, questions_asked, question_topics
+
+
+class ExplanationGenerator:
+    """Class wrapper for generating deterministic grounded explanations."""
+
+    def generate(
+        self,
+        action: str,
+        steps: List[str],
+        citations: Optional[List[str]] = None,
+        language: str = "fi",
+        decisive_question: Optional[str] = None,
+        escalation_required: bool = False,
+        escalation_target: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        from src.intelligence.signal_fusion import FusedContext
+        ctx = FusedContext(
+            case_id="gen",
+            journey="suspicious_message",
+            audience="consumer",
+            language=language,
+            full_text=action,
+        )
+        decisive_tuple = ("clarification", decisive_question) if decisive_question else None
+        text, steps_list, q_asked, q_topics = generate_response(
+            ctx=ctx,
+            action=action,
+            required_steps=steps,
+            decisive_question=decisive_tuple,
+            escalation_required=escalation_required,
+            escalation_target=escalation_target,
+        )
+        return {
+            "advice_text": text,
+            "steps": steps_list,
+            "questions_asked": q_asked,
+            "question_topics": q_topics,
+        }

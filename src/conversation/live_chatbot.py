@@ -19,10 +19,12 @@ from src.decision.twin_resolver import detect_decisive_question
 from src.decision.action_selector import ActionSelector
 from src.explanations.generator import generate_response
 from src.security.output_guard import OutputSecurityGate
+from src.db.repository import PostgresRepository
 
 _rag = GuidanceRAGRetriever()
 _selector = ActionSelector()
 _guard = OutputSecurityGate()
+_repo = PostgresRepository()
 
 
 def _detect_language(text: str) -> str:
@@ -195,6 +197,19 @@ class LiveChatbot:
         final_ans, is_valid, _ = self.guard.verify_and_guard(candidate, lang=lang)
         save_decision(session_id, final_ans)
         add_message(session_id, role="assistant", msg_type="final", content=final_ans.get("advice_text", ""))
+        try:
+            _repo.add_turn(session_id, turn_index=len(history)+1, role="assistant", content=final_ans.get("advice_text", ""), language=lang)
+            _repo.record_decision_outcome(
+                conversation_id=session_id,
+                turn_index=len(history)+1,
+                action=rec.primary_action,
+                risk_level=rec.risk_level,
+                urgency=rec.urgency,
+                requires_specialist=bool(rec.escalation_required),
+                escalation_target=rec.escalation_target,
+            )
+        except Exception:
+            pass
 
         return {
             "session_id": session_id,

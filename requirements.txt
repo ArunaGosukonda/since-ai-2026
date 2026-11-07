@@ -1,0 +1,18 @@
+# Core production dependencies for Since AI (DNA Digital Security Assistant)
+# Platform: Google Cloud Platform (europe-north1) & Local Docker
+
+# Database & Vector Extension
+psycopg[binary]>=3.1.18
+pgvector>=0.2.5
+
+# Web Framework & API
+fastapi>=0.110.0
+uvicorn[standard]>=0.28.0
+pydantic>=2.6.0
+
+# Google Cloud Vertex AI (Regional: europe-north1)
+google-cloud-aiplatform>=1.44.0
+google-cloud-secret-manager>=2.18.0
+
+# Utilities
+python-dotenv>=1.0.1

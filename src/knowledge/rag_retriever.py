@@ -1,36 +1,36 @@
-# -*- coding: utf-8 -*-
-"""Grounded RAG Retriever over DNA Official Guidance Corpus.
+"""Grounded Dense Semantic RAG Retriever over DNA Official Guidance Corpus.
 
-Implements high-precision BM25 & Semantic keyword retrieval over all 56 official
-DNA guidance documents from data/reference/guidance_corpus.jsonl.
-Strictly grounds responses in official advice—zero hallucinations.
+Strict Zero-Lexical Policy:
+- Uses dense vector embedding similarity and contextual semantic retrieval exclusively.
+- No BM25, TF-IDF, keyword matching, lexical search, hybrid retrieval, RRF or keyword fallback.
 """
+
+from __future__ import annotations
 import json
-import math
 import os
-import re
-from collections import Counter
 from typing import Any, Dict, List, Optional
+
+from src.core.contracts import ContextualQuery
+from src.rag.retriever import ContextualDenseRetriever
+from src.rag.embedder import DenseEmbedder
+from src.db.repository import PostgresRepository
 
 ROOT = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "../.."))
 CORPUS_PATH = os.path.join(ROOT, "data/reference/guidance_corpus.jsonl")
 
 
-def _tokenize(text: str) -> List[str]:
-    return [w for w in re.findall(r"\w+", text.lower()) if len(w) > 1]
-
-
 class GuidanceRAGRetriever:
-    """Zero-dependency, high-performance BM25 RAG retriever for DNA security guidance."""
+    """Dense vector semantic retriever for DNA security guidance.
     
+    Provides backward-compatible interface backed strictly by dense vector embeddings.
+    """
+
     def __init__(self, corpus_path: str = CORPUS_PATH):
         self.corpus_path = corpus_path
-        self.documents: List[Dict[str, Any]] = []
-        self.doc_tokens: List[List[str]] = []
-        self.df: Counter = Counter()
-        self.doc_lens: List[int] = []
-        self.avg_doc_len: float = 1.0
-        self.N: int = 0
+        self.embedder = DenseEmbedder()
+        self.repo = PostgresRepository()
+        self.retriever = ContextualDenseRetriever(embedder=self.embedder, repository=self.repo)
+        self.documents: Dict[str, Dict[str, Any]] = {}
         self._load_corpus()
 
     def _load_corpus(self):
@@ -40,59 +40,56 @@ class GuidanceRAGRetriever:
             for line in f:
                 line = line.strip()
                 if line:
-                    self.documents.append(json.loads(line))
-                    
-        self.N = len(self.documents)
-        for doc in self.documents:
-            text = (
-                f"{doc.get('title_fi', '')} {doc.get('text_fi', '')} "
-                f"{doc.get('title_en', '')} {doc.get('text_en', '')} "
-                f"{' '.join(doc.get('topics', []))}"
-            )
-            tokens = _tokenize(text)
-            self.doc_tokens.append(tokens)
-            self.doc_lens.append(len(tokens))
-            for term in set(tokens):
-                self.df[term] += 1
-                
-        if self.doc_lens:
-            self.avg_doc_len = sum(self.doc_lens) / len(self.doc_lens)
+                    doc = json.loads(line)
+                    self.documents[doc["id"]] = doc
 
-    def retrieve(self, query: str, top_k: int = 3, audience: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Retrieves the top-k most relevant guidance documents matching the query."""
-        if not self.documents:
-            return []
-            
-        q_tokens = _tokenize(query)
-        if not q_tokens:
-            return self.documents[:top_k]
-            
-        k1 = 1.5
-        b = 0.75
-        scored_docs = []
-        
-        for idx, (tokens, dlen) in enumerate(zip(self.doc_tokens, self.doc_lens)):
-            doc = self.documents[idx]
-            if audience and doc.get("audience") not in ("both", audience):
-                continue
-                
-            score = 0.0
-            tf = Counter(tokens)
-            for t in q_tokens:
-                if t in self.df:
-                    idf = math.log((self.N - self.df[t] + 0.5) / (self.df[t] + 0.5) + 1.0)
-                    term_tf = tf[t]
-                    score += idf * (term_tf * (k1 + 1.0)) / (term_tf + k1 * (1.0 - b + b * (dlen / self.avg_doc_len)))
-                    
-            if score > 0.0:
-                scored_docs.append((score, doc))
-                
-        scored_docs.sort(key=lambda x: x[0], reverse=True)
-        return [doc for score, doc in scored_docs[:top_k]]
+    def retrieve(
+        self,
+        query: str,
+        top_k: int = 3,
+        audience: Optional[str] = None,
+        language: str = "fi",
+        conversation_history: Optional[List[Dict[str, Any]]] = None,
+        confirmed_facts: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict[str, Any]]:
+        """Retrieves guidance documents matching the query using dense vector cosine similarity."""
+        ctx_query = self.retriever.build_contextual_query(
+            user_message=query,
+            conversation_history=conversation_history,
+            confirmed_facts=confirmed_facts,
+            language=language,
+        )
+
+        filters = {}
+        if audience:
+            filters["audience"] = audience
+
+        passages = self.retriever.retrieve(
+            contextual_query=ctx_query,
+            top_k=top_k,
+            filters=filters,
+        )
+
+        results = []
+        for p in passages:
+            base_id = p.doc_id.replace("_fi", "").replace("_en", "")
+            doc = self.documents.get(base_id)
+            if doc:
+                res = dict(doc)
+                res["similarity_score"] = p.similarity_score
+                results.append(res)
+            else:
+                results.append({
+                    "id": p.doc_id,
+                    "title_fi": p.title,
+                    "text_fi": p.content,
+                    "title_en": p.title,
+                    "text_en": p.content,
+                    "url": p.url,
+                    "similarity_score": p.similarity_score,
+                })
+        return results
 
     def get_by_id(self, guidance_id: str) -> Optional[Dict[str, Any]]:
         """Looks up a specific guidance document by its ID."""
-        for d in self.documents:
-            if d.get("id") == guidance_id:
-                return d
-        return None
+        return self.documents.get(guidance_id)

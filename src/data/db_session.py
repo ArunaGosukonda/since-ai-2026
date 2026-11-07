@@ -23,7 +23,9 @@ def _get_connection(db_path: str = DB_PATH) -> sqlite3.Connection:
 
 def init_db(db_path: str = DB_PATH):
     """Initializes the SQLite schema if not already present."""
+    from src.db.connection import DatabaseConnectionManager
     with _get_connection(db_path) as conn:
+        DatabaseConnectionManager()._ensure_sqlite_tables(conn)
         conn.executescript("""
         CREATE TABLE IF NOT EXISTS sessions (
             session_id TEXT PRIMARY KEY,
