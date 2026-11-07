@@ -23,7 +23,7 @@ app = None
 try:
     from fastapi import FastAPI, Request
     from fastapi.middleware.cors import CORSMiddleware
-    from fastapi.responses import JSONResponse
+    from fastapi.responses import FileResponse, JSONResponse
 
     app = FastAPI(
         title="Since AI — DNA Digital Security Assistant API",
@@ -57,6 +57,20 @@ try:
     async def consent(request: Request):
         payload = await request.json()
         return handle_consent_update(payload)
+
+    @app.get("/demo")
+    @app.get("/demo.html")
+    async def serve_demo():
+        demo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
+        if os.path.exists(demo_path):
+            return FileResponse(demo_path)
+        return JSONResponse({"error": "demo not found"}, status_code=404)
+
+    # Mount static frontend assets (serves index.html on root /)
+    frontend_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend"))
+    if os.path.exists(frontend_dir):
+        from fastapi.staticfiles import StaticFiles
+        app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
 
 except ImportError:
     app = None
