@@ -26,11 +26,19 @@ IN_SCOPE_CYBERSECURITY_KEYWORDS = [
 
 # Explicit out-of-scope patterns
 OUT_OF_SCOPE_TOPICS = [
+    # General Knowledge
+    (
+        "general_knowledge",
+        [
+            r"\b(?:what\s+is\s+the\s+capital\s+of|who\s+was\s+the\s+first\s+president|how\s+many\s+continents|tallest\s+mountain|distance\s+to\s+the\s+moon)\b",
+            r"\b(?:mikä\s+on\s+ranskan\s+pääkaupunki|kuka\s+keksi\s+puhelimen)\b",
+        ],
+    ),
     # Math & Algebra
     (
         "mathematics",
         [
-            r"\b(?:solve|calculate|compute|integrate|differentiate|evaluate)\s+(?:the\s+equation|integral|derivative|algebraic|sum|\d+[\+\-\*/\^])",
+            r"\b(?:solve|calculate|compute|integrate|differentiate|evaluate)\s+(?:this\s+)?(?:complicated\s+)?(?:algebra\s+problem|equation|integral|derivative|algebraic|sum|\d+[\+\-\*/\^])",
             r"\b\d+\s*[\+\-\*/\^x]\s*\d+\s*=\s*\?",
             r"\b(?:calculus|pythagorean|geometry|trigonometry|quadratic\s+equation|matrix\s+multiplication)\b",
         ],
@@ -41,7 +49,7 @@ OUT_OF_SCOPE_TOPICS = [
         [
             r"\b(?:write|code|create|build)\s+(?:a|an)\s+(?:todo\s+app|calculator|game|snake\s+game|weather\s+app|tic-?tac-?toe)",
             r"\b(?:how\s+to\s+use|explain)\s+(?:react\s+useeffect|vue\s+composition|css\s+grid|html\s+flexbox|django\s+models|flutter\s+widget)",
-            r"\b(?:write\s+a\s+python\s+function\s+to\s+sort|bubble\s+sort|binary\s+search\s+tree|fibonacci)\b",
+            r"\b(?:write\s+a\s+(?:python\s+)?program\s+to\s+calculate\s+fibonacci|fibonacci\s+numbers?|write\s+a\s+python\s+function\s+to\s+sort|bubble\s+sort|binary\s+search\s+tree)\b",
         ],
     ),
     # Entertainment, Movies & Pop Culture
@@ -49,6 +57,7 @@ OUT_OF_SCOPE_TOPICS = [
         "entertainment",
         [
             r"\b(?:recommend|suggest|what\s+is\s+your\s+favourite|favorite|best)\b.*?\b(?:movie|film|tv\s+show|series|anime|song|music|band|actor|actress|netflix|cinema)\b",
+            r"\b(?:recommend|suggest)\s+(?:five\s+|5\s+|some\s+)?(?:telugu|tamil|hindi|bollywood|hollywood)?\s*movies?\b",
             r"\b(?:movie|film|song|music|netflix|cinema)\b.*?\b(?:recommend|watch|listen)\b",
             r"\b(?:who\s+won\s+the\s+oscar|who\s+played|plot\s+of\s+the\s+movie)\b",
         ],
@@ -57,13 +66,14 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "career_advice",
         [
-            r"\b(?:how\s+to\s+write\s+a\s+resume|cv\s+tips|interview\s+tips\s+for\s+marketing|negotiate\s+salary|career\s+path\s+in\s+nursing)\b",
+            r"\b(?:what\s+career\s+should\s+i\s+choose|how\s+to\s+write\s+a\s+resume|cv\s+tips|interview\s+tips\s+for\s+marketing|negotiate\s+salary|career\s+path\s+in\s+nursing)\b",
         ],
     ),
     # Medical Advice
     (
         "medical_advice",
         [
+            r"\b(?:what\s+medicine\s+should\s+i\s+take|take\s+for\s+a\s+headache|headache|stomach\s+ache|remedy\s+for\s+cough)\b",
             r"\b(?:i\s+have|suffering\s+from)\b.*?\b(?:fever|headache|sore\s+throat|cough|stomach\s+ache|rash|flu|cold|infection|symptoms?)\b",
             r"\b(?:what\s+causes\s+(?:cancer|diabetes|asthma))\b",
             r"\b(?:prescribe|medication|medicine|dosage|antibiotic|ibuprofen|paracetamol)\b",
@@ -74,7 +84,8 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "investment_advice",
         [
-            r"\b(?:should\s+i\s+buy|invest\s+in)\s+(?:bitcoin|ethereum|crypto|stocks?|tesla\s+shares?|gold|mutual\s+funds?)\b",
+            r"\b(?:which\s+stocks?\s+should\s+i\s+(?:purchase|buy)|should\s+i\s+(?:buy|invest\s+in)|stocks?\s+to\s+buy)\b",
+            r"\b(?:invest\s+in\s+(?:bitcoin|ethereum|crypto|stocks?|tesla|gold|mutual\s+funds?))\b",
             r"\b(?:best\s+stocks?\s+to\s+buy|predict\s+the\s+stock\s+market|portfolio\s+diversification)\b",
         ],
     ),
@@ -89,6 +100,7 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "school_assignments",
         [
+            r"\b(?:summarise|summarize)\s+(?:this\s+)?school\s+assignment\b",
             r"\b(?:write\s+an\s+essay\s+on|summarize\s+the\s+book|homework\s+assignment\s+on\s+shakespeare|who\s+was\s+napoleon)\b",
         ],
     ),
@@ -96,7 +108,7 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "casual_chitchat",
         [
-            r"^(?:tell\s+me\s+a\s+joke|make\s+me\s+laugh|what\s+is\s+the\s+meaning\s+of\s+life)\??$",
+            r"\b(?:tell\s+me\s+a\s+joke|make\s+me\s+laugh|what\s+is\s+the\s+meaning\s+of\s+life)\b",
             r"^(?:how\s+are\s+you(?:\s+doing)?|what['’]?s\s+up|what\s+is\s+the\s+weather(?:\s+today)?)\??$",
             r"^(?:kerro\s+vitsi|kuka\s+olet|mitä\s+kuuluu)\??$",
         ],

@@ -39,6 +39,7 @@ export function IncomingCall({
   bubbles,
   stage,
   liveFlags = [],
+  callerNumber = CALLER_NUMBER,
   onDecline,
   onAnswer,
   onSimulate,
@@ -49,11 +50,12 @@ export function IncomingCall({
   bubbles: Bubble[];
   stage: Stage;
   liveFlags?: string[];
+  callerNumber?: string;
   onDecline: () => void;
   onAnswer: () => void;
   onSimulate?: () => void;
 }) {
-  if (phase === "ringing") return <Ringing lang={lang} onDecline={onDecline} onAnswer={onAnswer} />;
+  if (phase === "ringing") return <Ringing lang={lang} callerNumber={callerNumber} onDecline={onDecline} onAnswer={onAnswer} />;
   return (
     <InCall
       lang={lang}
@@ -69,10 +71,12 @@ export function IncomingCall({
 
 function Ringing({
   lang,
+  callerNumber,
   onDecline,
   onAnswer,
 }: {
   lang: Lang;
+  callerNumber: string;
   onDecline: () => void;
   onAnswer: () => void;
 }) {
@@ -83,7 +87,7 @@ function Ringing({
   return (
     <div className="flex flex-1 flex-col items-center pt-10 text-center">
       <div className="text-lg font-bold text-ink-secondary">{t.incoming}</div>
-      <div className="mt-3 text-[32px] font-bold">{CALLER_NUMBER}</div>
+      <div className="mt-3 text-[32px] font-bold">{callerNumber}</div>
       <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-careful px-4 py-1.5 text-lg font-bold text-careful-foreground">
         <TriangleAlert size={20} className="text-careful-icon" aria-hidden />
         {t.unknown}

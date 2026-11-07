@@ -23,6 +23,7 @@ import {
   type CallPhase,
 } from "@/components/CallScreens";
 import { dangerPhrases } from "@/lib/dangerPhrases";
+import { CALLER_NUMBER } from "@/lib/callScript";
 import { storyText, type ChatStory } from "@/lib/chat";
 import { useLiveLog } from "@/lib/live";
 import { setDemoProfile, useDemoProfile } from "@/lib/decision";
@@ -131,15 +132,16 @@ function Demo() {
       bannerTimer.current = setTimeout(() => setBanner(false), 4000);
     }
   };
+  const [currentCaller, setCurrentCaller] = useState<string>(CALLER_NUMBER);
   /** Demo: a random text message from the dev dataset. */
   const receiveExample = () => {
     const e = pickExample(lang, lastExample.current);
     lastExample.current = e.case_id;
     void receiveSms(e.sender, e.body, e.lang, e.case_id);
   };
-  /** Demo: a typed text, arriving from "Unknown". */
-  const receiveTyped = (text: string) =>
-    void receiveSms(t.phone.unknownSender, text, lang, "typed");
+  /** Demo: a typed text, arriving from any sender or "Unknown". */
+  const receiveTyped = (sender: string, text: string) =>
+    void receiveSms(sender || t.phone.unknownSender, text, lang, "typed");
   const resetMessages = () => {
     setMessages(OLD_MESSAGES);
     setNewId(null);
@@ -176,23 +178,24 @@ function Demo() {
 
   const logCall = (note: CallLog["note"]) => {
     const at = Date.now();
-    setCalls((list) => [{ id: `caller-${at}`, who: "caller", note, when: at }, ...list]);
+    setCalls((list) => [{ id: `caller-${at}`, who: "caller", customNumber: currentCaller, note, when: at }, ...list]);
   };
   /** The phone rings first; nothing is transcribed until the user answers. */
-  const startCall = () => {
+  const startCall = (callerNum: string = CALLER_NUMBER) => {
     stopAll();
+    setCurrentCaller(callerNum);
     setCallPhase("ringing");
     setScreen("incomingCall");
   };
   const answerCall = () => {
     setCallPhase("inCall");
-    if (getMicConsent() === true) void call.start();
+    if (getMicConsent() === true) void call.start(currentCaller);
     else setAskMic(true); // nothing is recorded until the user taps Allow
   };
   const answerMic = (allow: boolean) => {
     setAskMic(false);
     setMicConsent(allow);
-    if (allow) void call.start();
+    if (allow) void call.start(currentCaller);
   };
   /** User declines while ringing, or hangs up during the call. */
   const declineCall = () => {
@@ -311,6 +314,7 @@ function Demo() {
               bubbles={call.bubbles}
               stage={call.stage}
               liveFlags={call.liveFlags}
+              callerNumber={currentCaller}
               onDecline={declineCall}
               onAnswer={answerCall}
               onSimulate={call.simulate}

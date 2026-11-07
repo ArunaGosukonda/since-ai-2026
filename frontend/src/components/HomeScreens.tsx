@@ -7,7 +7,7 @@ import {
   PhoneOff,
   ShieldOff,
 } from "lucide-react";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { i18n, locales, type Lang } from "@/lib/i18n";
 import { CALLER_NUMBER } from "@/lib/callScript";
 
@@ -107,6 +107,7 @@ export function AppHome({
 export type CallLog = {
   id: string;
   who: "anna" | "pharmacy" | "caller";
+  customNumber?: string;
   /** warned = DNA Assistant showed a scam warning before the user hung up; declined = user rejected while ringing. */
   note?: "warned" | "declined" | undefined;
   when: "today" | "yesterday" | number;
@@ -123,8 +124,9 @@ export function PhoneApp({
   calls: CallLog[];
   numberBlocked: boolean;
   onHome: () => void;
-  onDemoCall: () => void;
+  onDemoCall: (customNumber?: string) => void;
 }) {
+  const [callerInput, setCallerInput] = useState("");
   const t = i18n[lang];
   const p = t.phone;
   const whenOf = (c: CallLog) =>
@@ -148,7 +150,7 @@ export function PhoneApp({
             )}
             <div className="min-w-0 flex-1">
               <div className="truncate text-[20px] font-bold">
-                {c.who === "caller" ? CALLER_NUMBER : p[c.who]}
+                {c.who === "caller" ? c.customNumber || CALLER_NUMBER : p[c.who]}
               </div>
               {c.note === "warned" && (
                 <div className="text-base font-bold text-scam">{p.blocked}</div>
@@ -164,7 +166,29 @@ export function PhoneApp({
           </li>
         ))}
       </ul>
-      <DemoButton onClick={onDemoCall}>{p.demoCall}</DemoButton>
+      <div className="mt-4 flex flex-col gap-1.5 rounded-2xl border-2 border-dashed border-ink-secondary/40 p-3">
+        <label htmlFor="caller-number-input" className="text-xs font-bold text-ink-secondary">
+          Simulate incoming call from any number:
+        </label>
+        <div className="flex gap-2">
+          <input
+            id="caller-number-input"
+            type="text"
+            value={callerInput}
+            onChange={(e) => setCallerInput(e.target.value)}
+            placeholder={CALLER_NUMBER}
+            className="h-10 min-w-0 flex-1 rounded-xl border border-border px-3 text-sm font-bold outline-none focus:border-navy"
+          />
+          <button
+            type="button"
+            onClick={() => onDemoCall(callerInput.trim() || CALLER_NUMBER)}
+            className="flex items-center gap-1.5 rounded-xl bg-navy px-4 text-xs font-bold text-on-dark"
+          >
+            <PhoneIncoming size={16} aria-hidden /> Call
+          </button>
+        </div>
+      </div>
+      <DemoButton onClick={() => onDemoCall(callerInput.trim() || CALLER_NUMBER)}>{p.demoCall}</DemoButton>
     </div>
   );
 }

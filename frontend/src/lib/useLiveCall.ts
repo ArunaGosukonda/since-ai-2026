@@ -43,6 +43,7 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
   const [reason, setReason] = useState<string | undefined>(undefined);
   const [mic, setMic] = useState<CallMic>("off");
   const stageRef = useRef<Stage>("listening");
+  const callerRef = useRef<string>(CALLER_NUMBER);
   const said = useRef<string[]>([]);
   const token = useRef(0);
   const browserRec = useRef<SpeechRec | null>(null);
@@ -58,8 +59,9 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
     setMic("off");
   }, [stt.stop]);
 
-  const start = useCallback(async () => {
+  const start = useCallback(async (customCaller: string = CALLER_NUMBER) => {
     stop();
+    callerRef.current = customCaller;
     const my = token.current;
     const alive = () => token.current === my;
     setBubbles([]);
@@ -86,7 +88,7 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
         mode: "call",
         body: said.current.join(" "),
         lang,
-        sender: CALLER_NUMBER,
+        sender: callerRef.current,
       });
       // Pipeline unreachable: keep the current stage. Never show the call as safe without a decision.
       if (!alive() || !d) return;

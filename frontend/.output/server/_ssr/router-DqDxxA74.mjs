@@ -6,10 +6,10 @@ import { t as QueryClient } from "../_libs/tanstack__query-core.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-4YquHPPl.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-DqDxxA74.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
-var styles_default = "/assets/styles-BdUUt61F.css";
+var styles_default = "/assets/styles-vCa1y1OU.css";
 function reportLovableError(error, context = {}) {
 	if (typeof window === "undefined") return;
 	window.__lovableEvents?.captureException?.(error, {
@@ -178,7 +178,7 @@ function RootComponent() {
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Outlet, {})
 	});
 }
-var $$splitComponentImporter = () => import("./routes-BGjhiAxz.mjs");
+var $$splitComponentImporter = () => import("./routes-1RK-hh5Z.mjs");
 var Route$2 = createFileRoute("/")({
 	head: () => ({ meta: [
 		{ title: "DNA Assistant — Scam protection demo" },

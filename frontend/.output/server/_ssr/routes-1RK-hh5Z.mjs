@@ -4,7 +4,7 @@ import { n as require_jsx_runtime, r as require_react, t as useScribe } from "..
 import { t as getServerFnById } from "../__23tanstack-start-server-fn-resolver-vqAoBbka.mjs";
 import { C as ChevronUp, D as ArrowRight, E as Battery, O as ArrowLeft, S as CircleQuestionMark, T as ChevronDown, _ as MessageCircleQuestionMark, a as Square, b as Headset, c as ShieldCheck, d as Phone, f as PhoneOff, g as MessageSquare, h as Mic, i as Trash2, l as ShieldBan, m as OctagonAlert, n as Volume2, o as Signal, p as PhoneIncoming, r as TriangleAlert, s as ShieldOff, t as Wifi, u as SendHorizontal, v as Lock, w as ChevronLeft, x as EyeOff, y as Info } from "../_libs/lucide-react.mjs";
 import { t as CommitStrategy } from "../_libs/@elevenlabs/client+[...].mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-BGjhiAxz.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-1RK-hh5Z.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var i18n = {
@@ -738,6 +738,7 @@ function AppHome({ lang, time, onOpen }) {
 	});
 }
 function PhoneApp({ lang, calls, numberBlocked, onHome, onDemoCall }) {
+	const [callerInput, setCallerInput] = (0, import_react.useState)("");
 	const t = i18n[lang];
 	const p = t.phone;
 	const whenOf = (c) => typeof c.when === "number" ? new Date(c.when).toLocaleTimeString(locales[lang], {
@@ -782,7 +783,7 @@ function PhoneApp({ lang, calls, numberBlocked, onHome, onDemoCall }) {
 							children: [
 								/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 									className: "truncate text-[20px] font-bold",
-									children: c.who === "caller" ? CALLER_NUMBER : p[c.who]
+									children: c.who === "caller" ? c.customNumber || "+358 9 000 9811" : p[c.who]
 								}),
 								c.note === "warned" && /* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 									className: "text-base font-bold text-scam",
@@ -805,8 +806,34 @@ function PhoneApp({ lang, calls, numberBlocked, onHome, onDemoCall }) {
 					]
 				}, c.id))
 			}),
+			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+				className: "mt-4 flex flex-col gap-1.5 rounded-2xl border-2 border-dashed border-ink-secondary/40 p-3",
+				children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
+					htmlFor: "caller-number-input",
+					className: "text-xs font-bold text-ink-secondary",
+					children: "Simulate incoming call from any number:"
+				}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+					className: "flex gap-2",
+					children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+						id: "caller-number-input",
+						type: "text",
+						value: callerInput,
+						onChange: (e) => setCallerInput(e.target.value),
+						placeholder: CALLER_NUMBER,
+						className: "h-10 min-w-0 flex-1 rounded-xl border border-border px-3 text-sm font-bold outline-none focus:border-navy"
+					}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("button", {
+						type: "button",
+						onClick: () => onDemoCall(callerInput.trim() || "+358 9 000 9811"),
+						className: "flex items-center gap-1.5 rounded-xl bg-navy px-4 text-xs font-bold text-on-dark",
+						children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(PhoneIncoming, {
+							size: 16,
+							"aria-hidden": true
+						}), " Call"]
+					})]
+				})]
+			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(DemoButton, {
-				onClick: onDemoCall,
+				onClick: () => onDemoCall(callerInput.trim() || "+358 9 000 9811"),
 				children: p.demoCall
 			})
 		]
@@ -3066,13 +3093,14 @@ function MessageDetail({ lang, msg, onBack, onDelete, onIgnore, onAsk, ignored }
 		]
 	});
 }
-/** Demo control: type a text that arrives as a message from "Unknown". */
+/** Demo control: type a text that arrives as a message from any sender or "Unknown". */
 function ComposeUnknown({ lang, busy, onSend }) {
 	const p = i18n[lang].phone;
+	const [sender, setSender] = (0, import_react.useState)("");
 	const [text, setText] = (0, import_react.useState)("");
 	const send = () => {
 		if (!text.trim() || busy) return;
-		onSend(text.trim());
+		onSend(sender.trim() || p.unknownSender, text.trim());
 		setText("");
 	};
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("form", {
@@ -3081,10 +3109,20 @@ function ComposeUnknown({ lang, busy, onSend }) {
 			e.preventDefault();
 			send();
 		},
-		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
-			htmlFor: "compose-unknown",
-			className: "text-base font-bold text-ink-secondary",
-			children: p.composeLabel
+		children: [/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
+			className: "flex items-center justify-between",
+			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("label", {
+				htmlFor: "compose-unknown",
+				className: "text-base font-bold text-ink-secondary",
+				children: p.composeLabel
+			}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("input", {
+				type: "text",
+				value: sender,
+				onChange: (e) => setSender(e.target.value),
+				placeholder: `Sender (${p.unknownSender})`,
+				className: "h-8 w-44 rounded-lg border border-border px-2 text-xs outline-none focus:border-navy",
+				"aria-label": "Message sender number or name"
+			})]
 		}), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 			className: "flex items-end gap-2",
 			children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)("textarea", {
@@ -3121,9 +3159,10 @@ function words(s) {
 function bubbleText(b, lang) {
 	return b.text ?? words(i18n[lang].call.lines[b.line] ?? "").slice(0, b.shown).join(" ");
 }
-function IncomingCall({ lang, phase, mic, bubbles, stage, liveFlags = [], onDecline, onAnswer, onSimulate }) {
+function IncomingCall({ lang, phase, mic, bubbles, stage, liveFlags = [], callerNumber = CALLER_NUMBER, onDecline, onAnswer, onSimulate }) {
 	if (phase === "ringing") return /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Ringing, {
 		lang,
+		callerNumber,
 		onDecline,
 		onAnswer
 	});
@@ -3137,7 +3176,7 @@ function IncomingCall({ lang, phase, mic, bubbles, stage, liveFlags = [], onDecl
 		onSimulate
 	});
 }
-function Ringing({ lang, onDecline, onAnswer }) {
+function Ringing({ lang, callerNumber, onDecline, onAnswer }) {
 	const t = i18n[lang].call;
 	(0, import_react.useEffect)(() => {
 		navigator.vibrate?.([
@@ -3155,7 +3194,7 @@ function Ringing({ lang, onDecline, onAnswer }) {
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 				className: "mt-3 text-[32px] font-bold",
-				children: CALLER_NUMBER
+				children: callerNumber
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 				className: "mt-3 inline-flex items-center gap-2 rounded-full bg-careful px-4 py-1.5 text-lg font-bold text-careful-foreground",
@@ -3538,6 +3577,7 @@ function useLiveCall(lang, onScam) {
 	const [reason, setReason] = (0, import_react.useState)(void 0);
 	const [mic, setMic] = (0, import_react.useState)("off");
 	const stageRef = (0, import_react.useRef)("listening");
+	const callerRef = (0, import_react.useRef)(CALLER_NUMBER);
 	const said = (0, import_react.useRef)([]);
 	const token = (0, import_react.useRef)(0);
 	const browserRec = (0, import_react.useRef)(null);
@@ -3551,8 +3591,9 @@ function useLiveCall(lang, onScam) {
 		r?.stop();
 		setMic("off");
 	}, [stt.stop]);
-	const start = (0, import_react.useCallback)(async () => {
+	const start = (0, import_react.useCallback)(async (customCaller = CALLER_NUMBER) => {
 		stop();
+		callerRef.current = customCaller;
 		const my = token.current;
 		const alive = () => token.current === my;
 		setBubbles([]);
@@ -3586,7 +3627,7 @@ function useLiveCall(lang, onScam) {
 				mode: "call",
 				body: said.current.join(" "),
 				lang,
-				sender: CALLER_NUMBER
+				sender: callerRef.current
 			});
 			if (!alive() || !d) return;
 			const next = callStage(d.risk_level);
@@ -3821,14 +3862,15 @@ function Demo() {
 			bannerTimer.current = setTimeout(() => setBanner(false), 4e3);
 		}
 	};
+	const [currentCaller, setCurrentCaller] = (0, import_react.useState)(CALLER_NUMBER);
 	/** Demo: a random text message from the dev dataset. */
 	const receiveExample = () => {
 		const e = pickExample(lang, lastExample.current);
 		lastExample.current = e.case_id;
 		receiveSms(e.sender, e.body, e.lang, e.case_id);
 	};
-	/** Demo: a typed text, arriving from "Unknown". */
-	const receiveTyped = (text) => void receiveSms(t.phone.unknownSender, text, lang, "typed");
+	/** Demo: a typed text, arriving from any sender or "Unknown". */
+	const receiveTyped = (sender, text) => void receiveSms(sender || t.phone.unknownSender, text, lang, "typed");
 	const resetMessages = () => {
 		setMessages(OLD_MESSAGES);
 		setNewId(null);
@@ -3861,25 +3903,27 @@ function Demo() {
 		setCalls((list) => [{
 			id: `caller-${at}`,
 			who: "caller",
+			customNumber: currentCaller,
 			note,
 			when: at
 		}, ...list]);
 	};
 	/** The phone rings first; nothing is transcribed until the user answers. */
-	const startCall = () => {
+	const startCall = (callerNum = CALLER_NUMBER) => {
 		stopAll();
+		setCurrentCaller(callerNum);
 		setCallPhase("ringing");
 		setScreen("incomingCall");
 	};
 	const answerCall = () => {
 		setCallPhase("inCall");
-		if (getMicConsent() === true) call.start();
+		if (getMicConsent() === true) call.start(currentCaller);
 		else setAskMic(true);
 	};
 	const answerMic = (allow) => {
 		setAskMic(false);
 		setMicConsent(allow);
-		if (allow) call.start();
+		if (allow) call.start(currentCaller);
 	};
 	/** User declines while ringing, or hangs up during the call. */
 	const declineCall = () => {
@@ -4000,6 +4044,7 @@ function Demo() {
 							bubbles: call.bubbles,
 							stage: call.stage,
 							liveFlags: call.liveFlags,
+							callerNumber: currentCaller,
 							onDecline: declineCall,
 							onAnswer: answerCall,
 							onSimulate: call.simulate

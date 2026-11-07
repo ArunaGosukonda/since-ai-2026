@@ -56,17 +56,24 @@ class BankingValidator:
 
         # Detect banking domain presence
         is_banking = bool(re.search(
-            r"\b(pank[a-zäö]*|bank[a-zäö]*|verkkopank[a-zäö]*|tili[a-zäö]*|lain[a-zäö]*|account[a-zäö]*|loan[a-zäö]*|gold\s*card|credit\s*card|kort[a-zäö]*|siirto|transfer|iban|otp|mfa|tunnusluk[a-zäö]*)\b",
+            r"\b(pank[a-zäö]*|bank[a-zäö]*|verkkopank[a-zäö]*|tili[a-zäö]*|lain[a-zäö]*|account[a-zäö]*|loan[a-zäö]*|debit[\-\s]*card|gold\s*card|credit\s*card|kort[a-zäö]*|payment|maksu|maksettu|veloitus|transaction|tapahtuma|balance|saldo|siirto|transfer|iban|otp|mfa|tunnusluk[a-zäö]*|paypal|paypai|refund|parcel|delivery)\b",
             t,
             re.IGNORECASE,
         ))
-        if not is_banking:
+        if not is_banking and not links and not sender_identity_verified:
             return None
+
+        # Lookalike domains (e.g. paypaI-example.com with capital I)
+        has_lookalike_domain = bool(re.search(
+            r"(?:paypa[iI][\-_a-z0-9]*\.com|nordea[\-_][a-z0-9]+\.com|op[\-_][a-z0-9]+\.com|danske[\-_][a-z0-9]+\.com)",
+            t,
+            re.IGNORECASE,
+        ))
 
         # Critical attack triggers that immediately make communication SUSPICIOUS_OR_MALICIOUS
         # Demands to disclose/enter credentials (active credential extraction)
         asks_credentials = bool(re.search(
-            r"(?:anna|kerro|syötä|lähetä|vahvista|disclose|give|tell|enter|send|share|provide|input|reply\s+with|type|submit)\b.*?(?:salasana|password|pin|tunnusluku|pankkitunnus|bankid|koodi|code|otp|mfa|cvv|cvc)",
+            r"(?:anna|kerro|syötä|lähetä|vahvista|disclose|give|tell|enter|send|share|provide|input|reply\s+with|type|submit)\b.*?(?:salasana|password|pin|tunnusluku|pankkitunnus|bankid|koodi|code|otp|mfa|cvv|cvc|verification\s*code|six-digit)",
             t,
             re.IGNORECASE,
         )) or bool(re.search(
@@ -75,7 +82,32 @@ class BankingValidator:
             re.IGNORECASE,
         ))
         asks_money_transfer = bool(re.search(
-            r"(?:siirrä\s+(?:rahaa|varat|summa)|transfer\s+(?:funds|money|amount)|turvatil|safe\s*account|maksa\s+heti|urgent\s+wire)",
+            r"(?:siirrä\s+(?:rahaa|varat|summa)|transfer\s+(?:funds|money|amount)|turvatil|safe\s*account|maksa\s+heti|urgent\s+wire|transfer\s+money\s+immediately|account\s+will\s+be\s+blocked\s+in\s+10\s+minutes)",
+            t,
+            re.IGNORECASE,
+        ))
+        asks_fake_refund = bool(re.search(
+            r"(?:eligible\s+for\s+(?:a\s+)?€?\s*\d+\s*(?:refund|euro)|refund\b.*?(?:enter|credentials|pankki)|oikeutettu\s+palautukseen)",
+            t,
+            re.IGNORECASE,
+        ))
+        asks_parcel_fee = bool(re.search(
+            r"(?:pay|maksa|betala)\s+(?:€?\s*\d+[\.,]\d+\s*€?|\d+\s*eur)\b.*?(?:parcel|paketti|paket|delivery|toimitus|release|vapauta)",
+            t,
+            re.IGNORECASE,
+        ))
+        qr_phishing = bool(re.search(
+            r"(?:scan|skannaa)\s+(?:this\s+)?qr\s*code\b.*?(?:reactivate|tili|pankki|bank|account)",
+            t,
+            re.IGNORECASE,
+        ))
+        bec_fraud = bool(re.search(
+            r"(?:ceo|toimitusjohtaja|cfo|director)\b.*?(?:asks|instructs|requests|pyytää)\b.*?(?:transfer|wire|siirtää)\b.*?(?:new\s+supplier|uudelle\s+toimittajalle|urgent|heti)",
+            t,
+            re.IGNORECASE,
+        ))
+        fake_employee_with_link = bool(re.search(
+            r"(?:i\s+am\s+(?:a\s+)?bank\s+employee|olen\s+pankkivirkailija|pankin\s+toimihenkilö)\b.*?(?:click\s+this\s+link|klikkaa\s+linkkiä|verify\s+your\s+account)",
             t,
             re.IGNORECASE,
         ))
@@ -103,12 +135,15 @@ class BankingValidator:
                 else:
                     has_suspicious_link = True
 
+        if has_lookalike_domain:
+            has_suspicious_link = True
+
         # -------------------------------------------------------------
         # Evaluate Scenarios
         # -------------------------------------------------------------
 
-        # Scenario 14: Requests passwords, OTPs, or MFA codes -> SUSPICIOUS_OR_MALICIOUS
-        if asks_credentials:
+        # Phishing / Malicious triggers -> SUSPICIOUS_OR_MALICIOUS
+        if asks_credentials or fake_employee_with_link:
             return {
                 "is_banking": True,
                 "classification": "SUSPICIOUS_OR_MALICIOUS",
@@ -126,14 +161,13 @@ class BankingValidator:
                 "safe_next_step": "Hang up or delete the message immediately. Do not share any codes. Contact your bank via the number on your payment card.",
             }
 
-        # Scenario 15: Requests urgent money transfers or 'safe account' -> SUSPICIOUS_OR_MALICIOUS
-        if asks_money_transfer:
+        if asks_money_transfer or bec_fraud:
             return {
                 "is_banking": True,
                 "classification": "SUSPICIOUS_OR_MALICIOUS",
                 "evidence_strength": "conclusive",
                 "supporting_indicators": [
-                    "Requests an urgent transfer of money or moving funds to a 'safe account'.",
+                    "Requests an urgent transfer of money or moving funds to a 'safe account' or new supplier.",
                     "There is no such thing as a 'safe account' at another bank for protecting compromised funds.",
                 ],
                 "missing_verification": [],
@@ -143,6 +177,24 @@ class BankingValidator:
                 ),
                 "recommended_action": "verify_via_official_channel",
                 "safe_next_step": "Refuse to transfer any money. Contact your bank immediately using the verified phone number printed on your card.",
+            }
+
+        if asks_fake_refund or asks_parcel_fee or qr_phishing:
+            return {
+                "is_banking": True,
+                "classification": "SUSPICIOUS_OR_MALICIOUS",
+                "evidence_strength": "conclusive",
+                "supporting_indicators": [
+                    "Fabricated refund lure, delivery release fee, or QR-code authentication redirect.",
+                    "Designed to harvest payment credentials or banking authentication.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "Scammers frequently use fake refund promises, small delivery fee demands, or QR codes to direct "
+                    "victims to credential harvesting pages. Genuine refunds are deposited directly without entering login codes."
+                ),
+                "recommended_action": "do_not_interact_and_delete",
+                "safe_next_step": "Do not open any link, scan the QR code, or pay any fee. Delete the message.",
             }
 
         # Scenario 4: Password reset notifications
@@ -277,6 +329,49 @@ class BankingValidator:
                 ),
                 "recommended_action": "do_not_interact_and_delete",
                 "safe_next_step": "Do not click or open the link. Delete the message and navigate to the bank website manually.",
+            }
+
+        # Scenario 6: Legitimate bank URL (official verified domain)
+        if has_official_link and not has_suspicious_link and not asks_credentials and not asks_money_transfer:
+            return {
+                "is_banking": True,
+                "classification": "BENIGN",
+                "evidence_strength": "high",
+                "supporting_indicators": [
+                    "Message contains a verified link belonging to an official banking domain.",
+                    "No requests for passwords, PINs, or one-time verification codes.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "This communication links directly to an official bank domain. The presence of a link alone "
+                    "does not make the message dangerous when it points to the verified official service."
+                ),
+                "recommended_action": "proceed_normally",
+                "safe_next_step": "You may open the official bank service or navigate directly via your banking app.",
+            }
+
+        # Genuine Security Warning or Transaction Alert (e.g. debit-card transaction notification)
+        is_security_or_txn_alert = bool(re.search(
+            r"(?:security\s*warning|suspicious\s*transaction\s*warning|debit[\-\s]*card\s*(?:transaction|alert|notification|payment)|transaction\s*(?:confirmation|alert|notification)|tilisiirto\s*vahvistus|korttitapahtuma|turvallisuusvaroitus)",
+            t,
+            re.IGNORECASE,
+        ))
+        if is_security_or_txn_alert and not asks_credentials and not asks_money_transfer and not has_suspicious_link:
+            return {
+                "is_banking": True,
+                "classification": "BENIGN",
+                "evidence_strength": "high",
+                "supporting_indicators": [
+                    "Legitimate security advisory or transaction alert from financial institution.",
+                    "No credential harvesting or suspicious third-party links present.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "This is a legitimate bank security notification or transaction alert informing you of account activity. "
+                    "It does not ask you to disclose credentials or click unauthorized links."
+                ),
+                "recommended_action": "proceed_normally",
+                "safe_next_step": "Review the transaction details directly in your official mobile banking app.",
             }
 
         # Scenario 2, 4, 5, 6: Genuine notice without links directing user to open own app

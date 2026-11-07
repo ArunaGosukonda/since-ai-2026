@@ -12,13 +12,17 @@ from typing import Any, Dict, List, Optional
 
 from src.classifier import get_threat_classifier
 from src.intelligence.banking_validator import BankingValidator
+from src.security.adversarial_detector import AdversarialDetector
 from src.security.output_guard import OutputSecurityGate
+from src.security.scope_enforcer import ScopeEnforcer
 
 logger = logging.getLogger(__name__)
 
 _banking_validator = BankingValidator()
 _classifier = get_threat_classifier()
 _output_guard = OutputSecurityGate()
+_adversarial = AdversarialDetector()
+_scope_enforcer = ScopeEnforcer()
 
 # Danger phrases to flag and underline in call transcript
 DANGER_PATTERNS = [
@@ -128,7 +132,7 @@ def handle_analyze_request(req: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
-    """Classifies an SMS text message or call transcript using the DSA pipeline and BankingValidator.
+    """Classifies an SMS text message, chat description, or call transcript using the DSA pipeline and BankingValidator.
     
     Expected input:
     {
@@ -141,16 +145,123 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
     sender = str(req.get("sender", "Unknown"))
     body = str(req.get("body") or req.get("message") or req.get("text") or "").strip()
     lang = req.get("lang", "en")
+    mode = str(req.get("mode", "sms"))
     links = re.findall(r"https?://[^\s]+", body)
 
-    # Check for link presence or mentions
+    # 1. Adversarial & Information Extraction Security Check (Categories 3, 4, 5, 7, 8)
+    is_attack, attack_cat, attack_reason = _adversarial.scan_for_attacks(body)
+    if is_attack:
+        refusal = _adversarial.format_refusal_response(lang=lang)
+        adv = refusal["text"]
+        return {
+            "risk_level": "low",
+            "urgency": "routine",
+            "primary_action": "security_policy_refusal",
+            "verdict": "WARNING",
+            "outcome_type": "SECURITY_POLICY_REFUSAL",
+            "advice_text": adv,
+            "advice": adv,
+            "steps": refusal["steps_primary"],
+            "situation_id": "SEC-POLICY-REFUSAL",
+            "questions_asked": [],
+            "question_topics": [],
+            "consent_requested_for": [],
+            "escalation_required": False,
+            "escalation_target": None,
+            "citations": [],
+            "signals_used": ["adversarial_detector"],
+            "confidence": 1.0,
+            "trace": {"situation_id": "SEC-POLICY-REFUSAL", "facts_used": [], "rule_ids": ["POLICY:adversarial_defense"]},
+            "facts": {},
+        }
+
+    # 2. Out-of-Scope Enforcement (Category 2)
     has_link = bool(links) or bool(re.search(
         r"\b(link|linkki|länk|url|website|sivusto|osoite)\b",
         body,
         re.IGNORECASE,
     ))
+    if mode in ("chat", "call") or not has_link:
+        is_in_scope, out_topic, _ = _scope_enforcer.evaluate_scope(body)
+        if not is_in_scope:
+            out_resp = _scope_enforcer.format_out_of_scope_response(topic=out_topic or "general", lang=lang)
+            adv = out_resp["text"]
+            return {
+                "risk_level": "routine",
+                "urgency": "routine",
+                "primary_action": "out_of_scope_redirect",
+                "verdict": "SAFE",
+                "outcome_type": "OUT_OF_SCOPE",
+                "advice_text": adv,
+                "advice": adv,
+                "steps": out_resp["steps_primary"],
+                "situation_id": "OUT-OF-SCOPE",
+                "questions_asked": [],
+                "question_topics": [],
+                "consent_requested_for": [],
+                "escalation_required": False,
+                "escalation_target": None,
+                "citations": [],
+                "signals_used": ["scope_enforcer"],
+                "confidence": 1.0,
+                "trace": {"situation_id": "OUT-OF-SCOPE", "facts_used": [], "rule_ids": ["POLICY:scope_redirect"]},
+                "facts": {},
+            }
 
-    # 1. Run official DSA pipeline
+    # 3. Banking Communication & Tri-State Security Evaluation (Categories 1 & 6)
+    sender_verified = bool(req.get("sender_identity_verified", False))
+    b_res = _banking_validator.analyze_banking_communication(
+        body,
+        links=links,
+        channel=mode,
+        sender_identity_verified=sender_verified,
+    )
+    if b_res:
+        classification = b_res["classification"]
+        if classification == "BENIGN":
+            risk = "none"
+            verdict = "SAFE"
+            urgency = "routine"
+        elif classification == "INCONCLUSIVE":
+            risk = "medium"
+            verdict = "WARNING"
+            urgency = "today"
+        else:  # SUSPICIOUS_OR_MALICIOUS
+            risk = "critical"
+            verdict = "SUSPICIOUS"
+            urgency = "immediate"
+
+        adv = b_res.get("explanation", "")
+        adv = re.sub(r"\bspoofed\b", "faked", adv, flags=re.IGNORECASE)
+        adv = re.sub(r"\bcredentials\b", "login details", adv, flags=re.IGNORECASE)
+        safe_step = b_res.get("safe_next_step", "")
+        steps = [adv]
+        if safe_step:
+            steps.append(safe_step)
+
+        return {
+            "risk_level": risk,
+            "urgency": urgency,
+            "primary_action": b_res.get("recommended_action", "verify_via_official_channel"),
+            "verdict": verdict,
+            "outcome_type": classification,
+            "advice_text": adv,
+            "advice": adv,
+            "steps": steps,
+            "situation_id": f"BANK-{classification}",
+            "questions_asked": [],
+            "question_topics": [],
+            "consent_requested_for": [],
+            "escalation_required": False,
+            "escalation_target": None,
+            "citations": [],
+            "signals_used": ["banking_validator"],
+            "confidence": 0.95,
+            "trace": {"situation_id": f"BANK-{classification}", "facts_used": [], "rule_ids": [f"BANK:{classification}"]},
+            "facts": {},
+        }
+
+    # 4. Run official DSA pipeline
     res = None
     try:
         from tools import classify_message
@@ -163,7 +274,7 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.warning("classify_message execution failed: %s", e)
 
-    # 2. Strict Link & Incident Security Enforcement:
+    # 5. Strict Link & Incident Security Enforcement:
     # A. Active malware or device compromise from a link -> CRITICAL risk (isolate device and scan)
     has_malware = bool(re.search(
         r"(?:malware\w*|virus\w*|virukse\w*|trojan\w*|spyware\w*|haittaohjelm\w*|skadlig\w*\s+kod\w*|infected\w*|saastun\w*|tartun\w*|hack\w*)",
@@ -177,6 +288,7 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
         res["urgency"] = "immediate"
         res["primary_action"] = "isolate_device_and_scan"
         res["situation_id"] = "S07"
+        res["outcome_type"] = "SUSPICIOUS_OR_MALICIOUS"
         if lang == "fi":
             res["advice_text"] = "Älä käytä verkkopankkia tällä laitteella ennen kuin se on tarkistettu. Epäilyttävästä linkistä ladattu ohjelma voi seurata viestejä ja koodeja. Laita laite heti lentotilaan tai katkaise verkkoyhteys. Ota yhteys pankkiisi, jos olet käyttänyt pankkipalveluita laitteella."
             res["steps"] = [
@@ -212,7 +324,7 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
 
     if has_link and not is_initiated_reset and not has_malware:
         if not is_chat_or_incident:
-            # Unopened incoming SMS: always warn user not to open unexpected link
+            # Unopened incoming SMS: always warn user not to open unexpected link -> INCONCLUSIVE
             if not res or res.get("risk_level") in ("none", "low", "routine"):
                 if res is None:
                     res = {}
@@ -226,13 +338,14 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
                 )
                 res["advice_text"] = adv
                 res["situation_id"] = "SM-UNVERIFIED-LINK"
+                res["outcome_type"] = "INCONCLUSIVE"
                 res["steps"] = [
                     "Do not open or click the link in the message.",
                     "Check the matter in the official app or on the organisation's own website.",
                     "Never enter banking codes, passwords, or personal details through external links.",
                 ]
         else:
-            # User reports already clicking link in chat: warn about credential/code exposure
+            # User reports already clicking link in chat: warn about credential/code exposure -> INCONCLUSIVE
             if not res or res.get("risk_level") in ("none", "low", "routine"):
                 if res is None:
                     res = {}
@@ -240,6 +353,7 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
                 res["urgency"] = "today"
                 res["primary_action"] = "verify_via_official_channel"
                 res["situation_id"] = "S03"
+                res["outcome_type"] = "INCONCLUSIVE"
                 if lang == "fi":
                     res["advice_text"] = "Koska avasit linkin, sulje sivu äläkä syötä salasanoja, koodeja tai korttitietoja. Tarkista asia suoraan palvelun virallisesta sovelluksesta tai virallisilta verkkosivuilta. Jos syötit pankkitietoja, ota heti yhteys pankkisi sulkupalveluun."
                     res["steps"] = [
@@ -263,34 +377,20 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
                     ]
 
     if not res:
-        # Fallback to BankingValidator and ThreatClassifier
-        b_res = _banking_validator.analyze_banking_communication(body, links=links)
-        if b_res:
-            classification = b_res["classification"]
-            risk = "critical" if classification == "SUSPICIOUS_OR_MALICIOUS" else ("medium" if classification == "INCONCLUSIVE" else "none")
-            urgency = "immediate" if risk == "critical" else ("today" if risk == "medium" else "routine")
-            adv = b_res.get("explanation", "")
-            adv = re.sub(r"\bspoofed\b", "faked", adv, flags=re.IGNORECASE)
-            adv = re.sub(r"\bcredentials\b", "login details", adv, flags=re.IGNORECASE)
-            res = {
-                "risk_level": risk,
-                "urgency": urgency,
-                "primary_action": b_res.get("recommended_action", "verify_via_official_channel"),
-                "advice_text": adv,
-                "situation_id": "SM-BANKING-NOTICE",
-            }
-        else:
-            res = {
-                "risk_level": "medium",
-                "urgency": "today",
-                "primary_action": "verify_via_official_channel",
-                "advice_text": "Be cautious with unexpected messages. Verify directly in the official app.",
-                "situation_id": "SM-GENERAL",
-            }
+        res = {
+            "risk_level": "medium",
+            "urgency": "today",
+            "primary_action": "verify_via_official_channel",
+            "advice_text": "Be cautious with unexpected communications. Verify directly in the official app.",
+            "situation_id": "SM-GENERAL",
+            "outcome_type": "INCONCLUSIVE",
+        }
 
     # Ensure full Decision contract format for TanStack Start assess()
     r_lvl = res.get("risk_level", "medium")
     res["verdict"] = "SAFE" if r_lvl in ("none", "routine") else ("WARNING" if r_lvl == "medium" else "SUSPICIOUS")
+    if "outcome_type" not in res:
+        res["outcome_type"] = "BENIGN" if r_lvl in ("none", "routine") else ("INCONCLUSIVE" if r_lvl == "medium" else "SUSPICIOUS_OR_MALICIOUS")
     res["advice"] = res.get("advice_text", "")
     res.setdefault("steps", [res.get("advice_text", "")])
     res.setdefault("questions_asked", [])

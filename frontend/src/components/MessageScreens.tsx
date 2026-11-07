@@ -269,7 +269,7 @@ export function MessageDetail({
   );
 }
 
-/** Demo control: type a text that arrives as a message from "Unknown". */
+/** Demo control: type a text that arrives as a message from any sender or "Unknown". */
 export function ComposeUnknown({
   lang,
   busy,
@@ -277,13 +277,14 @@ export function ComposeUnknown({
 }: {
   lang: Lang;
   busy: boolean;
-  onSend: (text: string) => void;
+  onSend: (sender: string, text: string) => void;
 }) {
   const p = i18n[lang].phone;
+  const [sender, setSender] = useState("");
   const [text, setText] = useState("");
   const send = () => {
     if (!text.trim() || busy) return;
-    onSend(text.trim());
+    onSend(sender.trim() || p.unknownSender, text.trim());
     setText("");
   };
   return (
@@ -294,9 +295,19 @@ export function ComposeUnknown({
         send();
       }}
     >
-      <label htmlFor="compose-unknown" className="text-base font-bold text-ink-secondary">
-        {p.composeLabel}
-      </label>
+      <div className="flex items-center justify-between">
+        <label htmlFor="compose-unknown" className="text-base font-bold text-ink-secondary">
+          {p.composeLabel}
+        </label>
+        <input
+          type="text"
+          value={sender}
+          onChange={(e) => setSender(e.target.value)}
+          placeholder={`Sender (${p.unknownSender})`}
+          className="h-8 w-44 rounded-lg border border-border px-2 text-xs outline-none focus:border-navy"
+          aria-label="Message sender number or name"
+        />
+      </div>
       <div className="flex items-end gap-2">
         <textarea
           id="compose-unknown"
