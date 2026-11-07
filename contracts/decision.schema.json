@@ -1,0 +1,286 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contracts/decision.schema.json",
+  "title": "Internal decision: vendor submission fields plus trace",
+  "description": "One decision per case as produced inside the assistant. It is the vendor submission schema (schema/submission.schema.json, v2) with every field and required field unchanged, plus a required 'trace' object. IMPORTANT: the vendor schema has additionalProperties: false, so 'trace' MUST be stripped before a line is written to test_predictions.jsonl (or any file handed to eval/evaluate.py or tools/validate.py --submission). Keep traces in a separate file keyed by case_id.",
+  "type": "object",
+  "required": [
+    "case_id",
+    "risk_level",
+    "primary_action",
+    "advice_text",
+    "escalation_required",
+    "trace"
+  ],
+  "properties": {
+    "case_id": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "single_turn",
+        "multi_turn"
+      ]
+    },
+    "risk_level": {
+      "enum": [
+        "none",
+        "low",
+        "medium",
+        "high",
+        "critical"
+      ]
+    },
+    "urgency": {
+      "enum": [
+        "none",
+        "routine",
+        "today",
+        "immediate"
+      ]
+    },
+    "primary_action": {
+      "enum": [
+        "no_action_needed",
+        "do_not_interact_and_delete",
+        "verify_via_official_channel",
+        "contact_operator_support",
+        "change_password_and_enable_mfa",
+        "isolate_device_and_scan",
+        "contact_bank_and_block_cards",
+        "report_to_authority",
+        "escalate_to_human",
+        "decline_out_of_scope"
+      ]
+    },
+    "secondary_actions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "no_action_needed",
+          "do_not_interact_and_delete",
+          "verify_via_official_channel",
+          "contact_operator_support",
+          "change_password_and_enable_mfa",
+          "isolate_device_and_scan",
+          "contact_bank_and_block_cards",
+          "report_to_authority",
+          "escalate_to_human",
+          "decline_out_of_scope"
+        ]
+      }
+    },
+    "advice_text": {
+      "type": "string",
+      "description": "Exactly what the user is shown, in the user's language."
+    },
+    "steps": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "questions_asked": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "question_topics": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "credentials_entered",
+          "card_details_entered",
+          "code_shared",
+          "money_transferred",
+          "app_installed",
+          "remote_access_given",
+          "link_details",
+          "call_details",
+          "self_initiated",
+          "device_behaviour",
+          "signal_lost",
+          "account_affected",
+          "password_reused",
+          "business_access",
+          "payment_status",
+          "user_safety",
+          "time_of_event",
+          "message_content"
+        ]
+      }
+    },
+    "escalation_required": {
+      "type": "boolean"
+    },
+    "escalation_target": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "operator_support_agent",
+        "security_specialist",
+        "business_security_support",
+        "human_advisor",
+        null
+      ]
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "signals_used": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "artifact",
+          "link_check",
+          "call_warning",
+          "user_call_notes",
+          "subscription.products",
+          "subscription.recent_events",
+          "subscription.network_status",
+          "device.summary",
+          "device.recent_app_installs",
+          "device.security_findings",
+          "operator_account.recent_logins",
+          "credential_exposure",
+          "business.profile",
+          "business.staff_accounts"
+        ]
+      }
+    },
+    "consent_requested_for": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "artifact",
+          "link_check",
+          "call_warning",
+          "user_call_notes",
+          "subscription.products",
+          "subscription.recent_events",
+          "subscription.network_status",
+          "device.summary",
+          "device.recent_app_installs",
+          "device.security_findings",
+          "operator_account.recent_logins",
+          "credential_exposure",
+          "business.profile",
+          "business.staff_accounts"
+        ]
+      }
+    },
+    "confidence": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "abstained": {
+      "type": "boolean"
+    },
+    "transcript": {
+      "type": "array"
+    },
+    "conversation": {
+      "type": "object"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "trace": {
+      "description": "Internal audit trail. Not part of the vendor submission: strip before writing test_predictions.jsonl.",
+      "type": "object",
+      "required": [
+        "situation_id",
+        "facts_used",
+        "rule_ids",
+        "model",
+        "signals_used",
+        "consent_requested",
+        "consent_granted"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "situation_id": {
+          "description": "Situation from contracts/situations.yaml that produced the decision.",
+          "type": "string",
+          "pattern": "^S[0-9]{2}$"
+        },
+        "facts_used": {
+          "description": "Fact names (keys of contracts/facts.schema.json) the decision relied on.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$"
+          },
+          "uniqueItems": true
+        },
+        "rule_ids": {
+          "description": "Identifiers of the rules or contract clauses that fired, in order.",
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "model": {
+          "description": "Model id used for extraction or wording, or null when no model was called.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "signals_used": {
+          "description": "Signal paths read while deciding (should match the top-level signals_used).",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/signal_path"
+          },
+          "uniqueItems": true
+        },
+        "consent_requested": {
+          "description": "Consent-gated signal paths the assistant asked the user for.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/signal_path"
+          },
+          "uniqueItems": true
+        },
+        "consent_granted": {
+          "description": "Consent-gated signal paths pre-granted or granted by the user.",
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/signal_path"
+          },
+          "uniqueItems": true
+        }
+      }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "signal_path": {
+      "enum": [
+        "artifact",
+        "link_check",
+        "call_warning",
+        "user_call_notes",
+        "subscription.products",
+        "subscription.recent_events",
+        "subscription.network_status",
+        "device.summary",
+        "device.recent_app_installs",
+        "device.security_findings",
+        "operator_account.recent_logins",
+        "credential_exposure",
+        "business.profile",
+        "business.staff_accounts"
+      ]
+    }
+  }
+}

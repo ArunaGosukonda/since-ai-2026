@@ -1,6 +1,9 @@
 import {
+  ArrowRight,
   ChevronLeft,
+  CircleHelp,
   EyeOff,
+  Info,
   MessageCircleQuestion,
   OctagonAlert,
   SendHorizontal,
@@ -9,16 +12,37 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { i18n, locales, type Lang } from "@/lib/i18n";
-import { keywordVerdict, splitLink, type Msg, type Verdict } from "@/lib/messages";
+import { isWarning, splitLink, type Msg, type Verdict } from "@/lib/messages";
+import { dangerSpans, splitSpans } from "@/lib/dangerPhrases";
+import { StageBanner, StepsList, WhyPanel, actionLabel } from "@/components/DecisionViews";
 
 /**
  * The verdict the project pipeline gave when the message arrived. The old inbox messages
- * (doctor, library) are the user's own history and are shown as normal messages.
+ * (doctor, library) are the user's own history from before the demo: shown as normal messages,
+ * never labelled safe. Anything else without a verdict was not checked.
  */
-function verdictOf(m: Msg, lang: Lang): Verdict {
+function verdictOf(m: Msg): Verdict {
   if (m.verdict) return m.verdict;
-  if (m.i18n) return { stage: "safe", source: "keywords" };
-  return keywordVerdict(textOf(m, lang));
+  if (m.i18n) return { stage: "history", source: "history" };
+  return { stage: "unchecked", source: "unavailable" };
+}
+
+/** Underline the pipeline's own keyword patterns (display only: it can draw attention, never clear a message). */
+function Underlined({ text, context }: { text: string; context: string }) {
+  const parts = splitSpans(text, dangerSpans(text, context));
+  return (
+    <>
+      {parts.map((p, i) =>
+        p.flagged ? (
+          <span key={i} className="underline decoration-scam decoration-2 underline-offset-4">
+            {p.text}
+          </span>
+        ) : (
+          <span key={i}>{p.text}</span>
+        ),
+      )}
+    </>
+  );
 }
 
 function senderOf(m: Msg, lang: Lang) {
@@ -96,11 +120,11 @@ function Row({
   ignored: boolean;
 }) {
   const t = i18n[lang];
-  const v = verdictOf(m, lang);
+  const v = verdictOf(m);
   const isNew = !!m.at;
   const words = textOf(m, lang).split(" ");
   // Once the user chose "Ignore", the message is shown as a normal one.
-  const scam = v.stage !== "safe" && !ignored;
+  const scam = isWarning(v.stage) && !ignored;
   return (
     <li className={`border-b border-border ${m.id === newId ? "slide-down" : ""}`}>
       <button onClick={() => onOpen(m)} className="flex w-full flex-col gap-1 px-6 py-4 text-left">
@@ -111,6 +135,11 @@ function Row({
         {isNew && scam && (
           <span className="badge-pulse inline-flex w-fit items-center gap-1.5 rounded-full bg-scam-tint px-3 py-1 text-base font-bold text-scam-tint-foreground">
             <OctagonAlert size={18} aria-hidden /> {t.msg.dontOpen}
+          </span>
+        )}
+        {isNew && v.stage === "unchecked" && (
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-bubble px-3 py-1 text-base font-bold text-ink">
+            <CircleHelp size={18} aria-hidden /> {t.pipe.stage.unchecked}
           </span>
         )}
         <p className="line-clamp-2 text-[18px] leading-snug text-ink-secondary">
@@ -148,14 +177,18 @@ export function MessageDetail({
   ignored: boolean;
 }) {
   const t = i18n[lang].msg;
-  const v = verdictOf(msg, lang);
-  const scam = v.stage !== "safe" && !ignored;
-  // The pipeline's own advice; the generic text only when it could not be reached.
-  const reason = v.reasonText || t.scamReason;
-  const { before, link, after } = splitLink(textOf(msg, lang));
+  const p = i18n[lang].pipe;
+  const v = verdictOf(msg);
+  const d = v.decision;
+  const stage = ignored || v.stage === "history" ? null : v.stage;
+  const warn = isWarning(v.stage) && !ignored;
+  const [demoNote, setDemoNote] = useState(false);
+  const text = textOf(msg, lang);
+  const { before, link, after } = splitLink(text);
+  const action = d?.primary_action;
 
   return (
-    <div className="flex flex-1 flex-col gap-4 pt-2">
+    <div className="flex flex-1 flex-col gap-4 pt-2" data-testid="message-detail">
       <button
         onClick={onBack}
         className="-ml-2 flex items-center gap-1 self-start text-lg font-bold text-navy"
@@ -164,25 +197,22 @@ export function MessageDetail({
       </button>
       <div className="text-[22px] font-bold">{senderOf(msg, lang)}</div>
 
-      {scam && (
-        <>
-          <div
-            role="alert"
-            className="flex items-center gap-3 rounded-2xl bg-scam px-5 py-4 text-[22px] font-bold text-on-dark"
-          >
-            <OctagonAlert size={32} className="shrink-0" aria-hidden /> {t.scamBanner}
-          </div>
-          <p className="rounded-2xl bg-scam-tint px-5 py-4 text-scam-tint-foreground">{reason}</p>
-        </>
+      {stage && <StageBanner stage={stage} lang={lang} />}
+      {stage && d && (
+        <p
+          className={`rounded-2xl px-5 py-4 ${warn ? "bg-scam-tint text-scam-tint-foreground" : "bg-bubble"}`}
+        >
+          {d.advice_text}
+        </p>
       )}
 
       <div className="max-w-[92%] self-start rounded-2xl rounded-tl-sm bg-bubble px-4 py-3 text-[18px] leading-snug">
-        {before}
+        <Underlined text={before} context={text} />
         {link && (
           <span
             aria-disabled="true"
             className={
-              scam
+              stage && stage !== "safe"
                 ? "pointer-events-none break-all text-ink-secondary/60 line-through"
                 : "break-all"
             }
@@ -190,19 +220,46 @@ export function MessageDetail({
             {link}
           </span>
         )}
-        {after}
+        <Underlined text={after} context={text} />
       </div>
 
+      {stage && d && d.steps.length > 0 && (
+        <section className="flex flex-col gap-3">
+          <h2 className="text-[20px]">{p.steps}</h2>
+          <StepsList steps={d.steps} />
+        </section>
+      )}
+      {stage && d && <WhyPanel decision={d} lang={lang} />}
+
       <div className="mt-auto flex flex-col gap-4 pt-2">
-        {scam && (
-          <>
-            <button onClick={onDelete} className="btn-app bg-scam text-on-dark">
-              <Trash2 size={26} aria-hidden /> {t.deleteReport}
-            </button>
-            <button onClick={onIgnore} className="btn-app border-2 border-navy text-navy">
-              <EyeOff size={26} aria-hidden /> {t.ignore}
-            </button>
-          </>
+        {stage && action === "do_not_interact_and_delete" && (
+          <button onClick={onDelete} className="btn-app bg-scam text-on-dark" data-action={action}>
+            <Trash2 size={26} aria-hidden /> {t.deleteReport}
+          </button>
+        )}
+        {stage && action && action !== "do_not_interact_and_delete" && (
+          <button
+            onClick={() => (action === "no_action_needed" ? onBack() : setDemoNote(true))}
+            className={`btn-app ${warn ? "bg-navy text-on-dark" : "border-2 border-navy text-navy"}`}
+            data-action={action}
+          >
+            {action === "no_action_needed" ? (
+              <ShieldCheck size={26} aria-hidden />
+            ) : (
+              <ArrowRight size={26} aria-hidden />
+            )}{" "}
+            {actionLabel(action, lang)}
+          </button>
+        )}
+        {demoNote && (
+          <p role="status" className="flex gap-2 rounded-xl bg-bubble px-4 py-3 text-base">
+            <Info size={22} className="mt-0.5 shrink-0" aria-hidden /> {p.actionDemo}
+          </p>
+        )}
+        {warn && (
+          <button onClick={onIgnore} className="btn-app border-2 border-navy text-navy">
+            <EyeOff size={26} aria-hidden /> {t.ignore}
+          </button>
         )}
         <button onClick={onAsk} className="btn-app border-2 border-dna text-dna">
           <MessageCircleQuestion size={26} aria-hidden /> {t.askDna}

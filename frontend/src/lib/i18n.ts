@@ -115,6 +115,73 @@ const en = {
   safe: "Safe",
   careful: "Be careful",
   scam: "Scam",
+  /** Pipeline-driven screens (dsa.pipeline decides; these only label its fields). */
+  pipe: {
+    stage: {
+      safe: "No signs of a scam",
+      neutral: "Check it yourself",
+      careful: "Be careful",
+      scam: "Scam",
+      unchecked: "Not checked",
+    },
+    banner: {
+      safe: "DNA Assistant found no signs of a scam.",
+      neutral: "Check it yourself before you act on it.",
+      careful: "Be careful. Don't press links or reply yet.",
+      scam: "This may be a scam. Don't press links or reply.",
+      unchecked: "Couldn't check this right now. Don't act on it; check it in the official app.",
+    },
+    steps: "What to do",
+    actionDemo: "Demo: nothing is opened. In the real app this button would take you there.",
+    actions: {
+      no_action_needed: "OK, nothing to do",
+      do_not_interact_and_delete: "Delete and report",
+      verify_via_official_channel: "Check in the official app / website",
+      contact_operator_support: "Contact DNA customer service",
+      change_password_and_enable_mfa: "Change your password",
+      isolate_device_and_scan: "Disconnect and check the device",
+      contact_bank_and_block_cards: "Call your bank and block cards",
+      report_to_authority: "Report to the police",
+      escalate_to_human: "Talk to a person at DNA",
+      decline_out_of_scope: "DNA Assistant can't help with this",
+    },
+    checkedAccount: "Checked your DNA account (demo data)",
+    notChecked: "This answer is based only on what you told me. Your account was not checked.",
+    consentDeclined: "OK, I did not check your account. The advice above stays the same.",
+    questionIntro: "One thing I don't know yet:",
+    questionNote:
+      "Until you tell me, I answer as if the worse is true. You can type more details and I'll check again.",
+    consentText: {
+      "subscription.recent_events":
+        "May I check recent SIM, eSIM and number changes on your DNA subscription?",
+      "subscription.network_status": "May I check whether your line has network service right now?",
+      "device.recent_app_installs":
+        "May I check which apps were installed on this phone in the last 14 days?",
+      "device.security_findings":
+        "May I check this phone for remote-access apps and unknown settings?",
+      "operator_account.recent_logins": "May I check recent logins to your DNA account?",
+      credential_exposure: "May I check whether your email address appears in known data breaches?",
+      "business.staff_accounts": "May I check your company's user accounts?",
+      other: "May I check your DNA account details for this?",
+    },
+    consentWhy: "DNA Assistant asks because the answer may depend on it.",
+    micConnecting: "Connecting microphone…",
+    micUnavailable: "Live transcription unavailable",
+    micAsk:
+      "DNA would like to access your microphone. What you say is sent to ElevenLabs to turn it into text.",
+    micAllow: "Allow",
+    micDeny: "Do not allow",
+    ttsNote: "Read aloud sends this answer text to ElevenLabs to be spoken.",
+    why: {
+      title: "Why this advice",
+      situation: "Situation",
+      rule: "Rule",
+      facts: "What I noticed",
+      signals: "Account data used",
+      none: "None",
+      citations: "Sources",
+    },
+  },
   screens: {
     home: "Home",
     incomingCall: "Incoming call",
@@ -273,6 +340,75 @@ const fi: Dict = {
   safe: "Turvallinen",
   careful: "Ole varovainen",
   scam: "Huijaus",
+  /** Pipeline-driven screens (dsa.pipeline decides; these only label its fields). */
+  pipe: {
+    stage: {
+      safe: "Ei merkkejä huijauksesta",
+      neutral: "Tarkista itse",
+      careful: "Ole varovainen",
+      scam: "Huijaus",
+      unchecked: "Ei tarkistettu",
+    },
+    banner: {
+      safe: "DNA-avustaja ei löytänyt merkkejä huijauksesta.",
+      neutral: "Tarkista asia itse ennen kuin toimit.",
+      careful: "Ole varovainen. Älä vielä paina linkkejä tai vastaa.",
+      scam: "Tämä voi olla huijaus. Älä paina linkkejä tai vastaa.",
+      unchecked:
+        "Tätä ei voitu tarkistaa juuri nyt. Älä toimi viestin mukaan; tarkista asia virallisesta sovelluksesta.",
+    },
+    steps: "Mitä tehdä",
+    actionDemo: "Demo: mitään ei avata. Oikeassa sovelluksessa tämä painike veisi sinut sinne.",
+    actions: {
+      no_action_needed: "Selvä, ei toimenpiteitä",
+      do_not_interact_and_delete: "Poista ja ilmoita",
+      verify_via_official_channel: "Tarkista virallisesta sovelluksesta / verkkosivulta",
+      contact_operator_support: "Ota yhteyttä DNA:n asiakaspalveluun",
+      change_password_and_enable_mfa: "Vaihda salasana",
+      isolate_device_and_scan: "Irrota laite verkosta ja tarkista se",
+      contact_bank_and_block_cards: "Soita pankkiin ja sulje kortit",
+      report_to_authority: "Tee ilmoitus poliisille",
+      escalate_to_human: "Puhu DNA:n asiantuntijan kanssa",
+      decline_out_of_scope: "DNA-avustaja ei voi auttaa tässä",
+    },
+    checkedAccount: "Tarkistettu DNA-tililtäsi (demotietoa)",
+    notChecked: "Tämä vastaus perustuu vain siihen, mitä kerroit. Tiliäsi ei tarkistettu.",
+    consentDeclined: "Selvä, en tarkistanut tiliäsi. Yllä oleva neuvo pysyy samana.",
+    questionIntro: "Yhtä asiaa en vielä tiedä:",
+    questionNote:
+      "Kunnes kerrot, vastaan kuin pahempi vaihtoehto olisi totta. Voit kirjoittaa lisätietoja, niin tarkistan uudelleen.",
+    consentText: {
+      "subscription.recent_events":
+        "Saanko tarkistaa DNA-liittymäsi viimeaikaiset SIM-, eSIM- ja numeromuutokset?",
+      "subscription.network_status": "Saanko tarkistaa, onko liittymässäsi nyt verkkoyhteys?",
+      "device.recent_app_installs":
+        "Saanko tarkistaa, mitä sovelluksia tähän puhelimeen on asennettu viimeisen 14 päivän aikana?",
+      "device.security_findings":
+        "Saanko tarkistaa puhelimesta etäkäyttösovellukset ja tuntemattomat asetukset?",
+      "operator_account.recent_logins": "Saanko tarkistaa DNA-tilisi viimeaikaiset kirjautumiset?",
+      credential_exposure:
+        "Saanko tarkistaa, näkyykö sähköpostiosoitteesi tunnetuissa tietovuodoissa?",
+      "business.staff_accounts": "Saanko tarkistaa yrityksesi käyttäjätilit?",
+      other: "Saanko tarkistaa tähän liittyvät DNA-tilisi tiedot?",
+    },
+    consentWhy: "DNA-avustaja kysyy, koska vastaus voi riippua siitä.",
+    micConnecting: "Yhdistetään mikrofonia…",
+    micUnavailable: "Puhe tekstiksi ei ole käytettävissä",
+    micAsk:
+      "DNA haluaa käyttää mikrofoniasi. Puheesi lähetetään ElevenLabsille tekstiksi muutettavaksi.",
+    micAllow: "Salli",
+    micDeny: "Älä salli",
+    ttsNote: "Ääneen lukeminen lähettää tämän vastauksen tekstin ElevenLabsille puheeksi.",
+    why: {
+      title: "Miksi tämä neuvo",
+      situation: "Tilanne",
+      rule: "Sääntö",
+      facts: "Mitä huomasin",
+      signals: "Käytetyt tilitiedot",
+      none: "Ei mitään",
+      citations: "Lähteet",
+    },
+  },
   screens: {
     home: "Koti",
     incomingCall: "Saapuva puhelu",
@@ -429,6 +565,75 @@ const sv: Dict = {
   safe: "Säker",
   careful: "Var försiktig",
   scam: "Bedrägeri",
+  /** Pipeline-driven screens (dsa.pipeline decides; these only label its fields). */
+  pipe: {
+    stage: {
+      safe: "Inga tecken på bedrägeri",
+      neutral: "Kontrollera själv",
+      careful: "Var försiktig",
+      scam: "Bedrägeri",
+      unchecked: "Inte kontrollerat",
+    },
+    banner: {
+      safe: "DNA-assistenten hittade inga tecken på bedrägeri.",
+      neutral: "Kontrollera saken själv innan du gör något.",
+      careful: "Var försiktig. Tryck inte på länkar och svara inte ännu.",
+      scam: "Det här kan vara ett bedrägeri. Tryck inte på länkar och svara inte.",
+      unchecked:
+        "Det gick inte att kontrollera det här just nu. Gör inget utifrån meddelandet; kontrollera i den officiella appen.",
+    },
+    steps: "Vad du ska göra",
+    actionDemo: "Demo: inget öppnas. I den riktiga appen skulle knappen ta dig dit.",
+    actions: {
+      no_action_needed: "Okej, inget att göra",
+      do_not_interact_and_delete: "Radera och anmäl",
+      verify_via_official_channel: "Kontrollera i den officiella appen / webbplatsen",
+      contact_operator_support: "Kontakta DNA:s kundtjänst",
+      change_password_and_enable_mfa: "Byt lösenord",
+      isolate_device_and_scan: "Koppla bort enheten och kontrollera den",
+      contact_bank_and_block_cards: "Ring banken och spärra korten",
+      report_to_authority: "Anmäl till polisen",
+      escalate_to_human: "Prata med en person på DNA",
+      decline_out_of_scope: "DNA-assistenten kan inte hjälpa till med detta",
+    },
+    checkedAccount: "Kontrollerat i ditt DNA-konto (demodata)",
+    notChecked: "Svaret bygger bara på det du berättade. Ditt konto kontrollerades inte.",
+    consentDeclined: "Okej, jag kontrollerade inte ditt konto. Rådet ovan gäller fortfarande.",
+    questionIntro: "En sak vet jag inte än:",
+    questionNote:
+      "Tills du berättar svarar jag som om det värre är sant. Du kan skriva mer så kontrollerar jag igen.",
+    consentText: {
+      "subscription.recent_events":
+        "Får jag kontrollera de senaste SIM-, eSIM- och nummerändringarna i ditt DNA-abonnemang?",
+      "subscription.network_status":
+        "Får jag kontrollera om din linje har nätverkstäckning just nu?",
+      "device.recent_app_installs":
+        "Får jag kontrollera vilka appar som har installerats på telefonen de senaste 14 dagarna?",
+      "device.security_findings":
+        "Får jag kontrollera telefonen efter fjärrstyrningsappar och okända inställningar?",
+      "operator_account.recent_logins":
+        "Får jag kontrollera de senaste inloggningarna på ditt DNA-konto?",
+      credential_exposure: "Får jag kontrollera om din e-postadress finns i kända dataläckor?",
+      "business.staff_accounts": "Får jag kontrollera företagets användarkonton?",
+      other: "Får jag kontrollera uppgifterna i ditt DNA-konto för detta?",
+    },
+    consentWhy: "DNA-assistenten frågar eftersom svaret kan bero på det.",
+    micConnecting: "Ansluter mikrofonen…",
+    micUnavailable: "Text i realtid är inte tillgänglig",
+    micAsk: "DNA vill använda din mikrofon. Det du säger skickas till ElevenLabs för att bli text.",
+    micAllow: "Tillåt",
+    micDeny: "Tillåt inte",
+    ttsNote: "Uppläsning skickar svarstexten till ElevenLabs för att läsas upp.",
+    why: {
+      title: "Varför det här rådet",
+      situation: "Situation",
+      rule: "Regel",
+      facts: "Vad jag lade märke till",
+      signals: "Kontouppgifter som användes",
+      none: "Inga",
+      citations: "Källor",
+    },
+  },
   screens: {
     home: "Hem",
     incomingCall: "Inkommande samtal",

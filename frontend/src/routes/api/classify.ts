@@ -4,13 +4,20 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 
 /**
- * POST /api/classify  {sender, body, lang}  ->  the project pipeline's decision for one text message.
- * Runs tools/classify_message.py (dsa/pipeline.py) in the repo root. The message is passed as JSON
- * on stdin, never through a shell. Set PYTHON_BIN to choose the interpreter.
+ * POST /api/classify  {mode?: "sms" | "chat" | "call", sender?, body, lang, granted?: string[], profile?: "default" | "esim"}
+ *   ->  the project pipeline's decision (dsa/pipeline.py via tools/classify_message.py).
+ * mode "sms" (default): a forwarded text. mode "chat": the user's own description of what happened.
+ * mode "call": the caller's words in a live call, transcribed so far.
+ * granted: consent-gated signal paths the user agreed to share (re-run after "Yes, check").
+ * profile: synthetic demo account. "default" is clean; "esim" adds a recent eSIM change (presenter key P only).
+ * The text is passed as JSON on stdin, never through a shell. Set PYTHON_BIN to choose the interpreter.
+ * The child gets only PATH and PYTHONDONTWRITEBYTECODE, never the API keys in process.env.
  */
 const ROOT = path.resolve(process.cwd(), "..");
 const SCRIPT = path.join(ROOT, "tools", "classify_message.py");
 const LANGS = new Set(["en", "fi", "sv"]);
+const SIGNAL_PATH = /^[a-z_]+(\.[a-z_]+)?$/;
+const PROFILES = new Set(["default", "esim"]);
 
 function pythonBin() {
   if (process.env["PYTHON_BIN"]) return process.env["PYTHON_BIN"];
@@ -22,7 +29,7 @@ function runPipeline(input: object): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(pythonBin(), [SCRIPT], {
       cwd: ROOT,
-      env: { ...process.env, PYTHONDONTWRITEBYTECODE: "1" },
+      env: { PATH: process.env["PATH"] ?? "/usr/bin:/bin", PYTHONDONTWRITEBYTECODE: "1" },
     });
     let out = "";
     let err = "";
@@ -53,30 +60,42 @@ export const Route = createFileRoute("/api/classify")({
           sender?: unknown;
           body?: unknown;
           lang?: unknown;
+          mode?: unknown;
+          granted?: unknown;
+          profile?: unknown;
         } | null;
-        const body = typeof b?.body === "string" ? b.body.slice(0, 1000) : "";
+        const mode = b?.mode === "chat" || b?.mode === "call" ? b.mode : "sms";
+        const body =
+          typeof b?.body === "string" ? b.body.slice(0, mode === "sms" ? 1000 : 4000) : "";
         if (!body.trim()) return new Response("Missing body", { status: 400 });
         const sender =
           typeof b?.sender === "string" && b.sender.trim() ? b.sender.slice(0, 60) : "Unknown";
         const lang = typeof b?.lang === "string" && LANGS.has(b.lang) ? b.lang : "en";
-
-        const apiBase = process.env["API_BASE_URL"] || "http://127.0.0.1:8080";
+        const profile =
+          typeof b?.profile === "string" && PROFILES.has(b.profile) ? b.profile : "default";
         try {
-          const res = await fetch(`${apiBase}/api/classify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ sender, body, lang }),
-          });
-          if (res.ok) {
-            const data = await res.text();
-            return new Response(data, { headers: { "Content-Type": "application/json" } });
+          const granted = Array.isArray(b?.granted)
+            ? b.granted
+                .filter((g): g is string => typeof g === "string" && SIGNAL_PATH.test(g))
+                .slice(0, 20)
+            : [];
+
+          const apiBase = process.env["API_BASE_URL"] || "http://127.0.0.1:8080";
+          try {
+            const res = await fetch(`${apiBase}/api/classify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ mode, sender, body, lang, granted, profile }),
+            });
+            if (res.ok) {
+              const data = await res.text();
+              return new Response(data, { headers: { "Content-Type": "application/json" } });
+            }
+          } catch (e) {
+            console.warn("Direct API call to /api/classify failed, falling back to local python", e);
           }
-        } catch (e) {
-          console.warn("Direct API call to /api/classify failed, falling back to local python", e);
-        }
 
-        try {
-          const out = await runPipeline({ sender, body, lang });
+          const out = await runPipeline({ mode, sender, body, lang, granted, profile });
           return new Response(out, { headers: { "Content-Type": "application/json" } });
         } catch (e) {
           console.error("classify failed", e);

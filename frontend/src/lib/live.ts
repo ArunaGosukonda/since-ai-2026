@@ -29,7 +29,7 @@ export function useLiveLog() {
 }
 
 /* ---------- timeout ---------- */
-/** Lite Gemini models answer in about 3 s, so allow a little more than that. */
+/** Default timeout for network calls (read aloud uses its own). */
 export const LIVE_TIMEOUT_MS = 6000;
 export function withTimeout<T>(p: Promise<T>, ms = LIVE_TIMEOUT_MS): Promise<T> {
   return new Promise((res, rej) => {
@@ -46,23 +46,6 @@ export function withTimeout<T>(p: Promise<T>, ms = LIVE_TIMEOUT_MS): Promise<T> 
     );
   });
 }
-
-/* ---------- safety floor ---------- */
-export type LiveStage = "listening" | "careful" | "scam" | "safe";
-const rank: Record<LiveStage, number> = { safe: 0, listening: 1, careful: 2, scam: 3 };
-const RISKY =
-  /\b(code|codes|pin|password|safe account|remote|anydesk|teamviewer|koodi\w*|salasan\w*|turvatili\w*|kod|koder|koden|koderna|lösenord\w*|säkert konto)\b/i;
-const READ_CODE =
-  /\b(read|tell|give|say|send|lue|kerro|anna|sano|läs|berätta|ge|säg)\b[^.?!]*\b(code|codes|pin|koodi\w*|kod|koder|koden|koderna)\b/i;
-
-/** Client-side minimum risk, whatever the model says. */
-export function safetyFloor(text: string, stage: LiveStage): LiveStage {
-  let floor: LiveStage = stage;
-  if (RISKY.test(text) && rank[floor] < rank.careful) floor = "careful";
-  if (READ_CODE.test(text)) floor = "scam";
-  return floor;
-}
-export const maxStage = (a: LiveStage, b: LiveStage) => (rank[a] >= rank[b] ? a : b);
 
 /* ---------- read aloud ---------- */
 const ttsCache = new Map<string, string>();

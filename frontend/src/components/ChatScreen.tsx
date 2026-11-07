@@ -1,16 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import {
   ArrowLeft,
+  CircleHelp,
   Headset,
   Info,
   Lock,
   Mic,
-  OctagonAlert,
   SendHorizontal,
   ShieldCheck,
-  ShieldOff,
   Square,
-  TriangleAlert,
   Volume2,
 } from "lucide-react";
 import { i18n, locales, type Lang } from "@/lib/i18n";
@@ -19,29 +17,21 @@ import { speak as speakTts, stopSpeaking } from "@/lib/live";
 import { useLiveStt } from "@/lib/useLiveStt";
 import {
   answerTurn,
+  awaitingConsent,
   spokenText,
-  storyText,
-  type ChatStory,
   type ChatTurn,
   type TurvaReply,
   type UserTurn,
 } from "@/lib/chat";
-
-const verdict = {
-  scam: { Icon: OctagonAlert, cls: "bg-scam text-on-dark" },
-  careful: { Icon: TriangleAlert, cls: "bg-careful text-careful-foreground" },
-  safe: { Icon: ShieldCheck, cls: "bg-safe text-safe-foreground" },
-} as const;
+import { StageBadge, StepsList, WhyPanel, consentText } from "@/components/DecisionViews";
+import { getMicConsent, setMicConsent } from "@/lib/micConsent";
 
 export function ChatScreen({
   lang,
-  story,
   prefill,
   onBack,
 }: {
   lang: Lang;
-  /** Where the chat was opened from; picks the scripted conversation. */
-  story: ChatStory;
   prefill: string;
   onBack: () => void;
 }) {
@@ -51,8 +41,8 @@ export function ChatScreen({
   const [history, setHistory] = useState<ChatTurn[]>([]);
   const [input, setInput] = useState(prefill);
   const [typing, setTyping] = useState(false);
-  /** The model could not be reached, so replies are the scripted demo ones. */
-  const [offline, setOffline] = useState(false);
+  /** The one-line microphone notice is open (asked before the first mic use). */
+  const [askMic, setAskMic] = useState(false);
   /** The mic is writing what the user says into the text box (nothing is sent until they press Send). */
   const [dictating, setDictating] = useState(false);
   /** Off until the user taps "Read aloud" on a reply; from then on every new reply is read out. */
@@ -71,11 +61,12 @@ export function ChatScreen({
   /** history length already read out, so each reply is spoken once. */
   const spokenUpTo = useRef(0);
 
-  useEffect(() => setInput(prefill), [prefill]);
-  useEffect(
-    () => endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" }),
-    [history, typing],
-  );
+  useEffect(() => {
+    setInput(prefill);
+  }, [prefill]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [history, typing]);
   useEffect(
     () => () => {
       if (timer.current) clearTimeout(timer.current);
@@ -94,11 +85,26 @@ export function ChatScreen({
     setDictating(false);
   };
 
-  const toggleMic = async () => {
+  const toggleMic = () => {
     if (dictating) {
       stopDictation();
       return;
     }
+    if (getMicConsent() !== true) {
+      setAskMic(true); // nothing starts until the user taps Allow
+      return;
+    }
+    void startDictation();
+  };
+  const answerMic = (allow: boolean) => {
+    setAskMic(false);
+    setMicConsent(allow);
+    if (allow) void startDictation();
+  };
+
+  /** Only ever called after the user allowed the microphone (getMicConsent() === true). */
+  const startDictation = async () => {
+    if (getMicConsent() !== true) return;
     stopSpeaking(); // never transcribe DNA Assistant's own voice
     setSpeakingIdx(null);
     const base = input.trim();
@@ -191,9 +197,8 @@ export function ChatScreen({
     typingRef.current = true;
     setHistory(next);
     setTyping(true);
-    // Always ask the model; only if it cannot be reached is a scripted demo reply used (and flagged).
-    getTurvaReplyLive(next, lang, story).then(({ reply, fallback }) => {
-      if (fallback) setOffline(true);
+    // dsa.pipeline decides; if it cannot be reached the reply is the "couldn't check" card, never "safe".
+    getTurvaReplyLive(next, lang).then((reply) => {
       setHistory((h) => [...h, reply]);
       setTyping(false);
     });
@@ -244,15 +249,6 @@ export function ChatScreen({
         </div>
       )}
 
-      {offline && (
-        <div
-          role="status"
-          className="flex shrink-0 items-start gap-2 bg-careful px-4 py-2 text-base text-careful-foreground"
-        >
-          <Info size={20} className="mt-0.5 shrink-0" aria-hidden /> {c.offlineNote}
-        </div>
-      )}
-
       <div className="flex flex-1 flex-col gap-4 overflow-y-auto px-4 py-5" aria-live="polite">
         {history.map((h, i) =>
           h.role === "user" ? (
@@ -262,34 +258,6 @@ export function ChatScreen({
             >
               {h.text}
             </div>
-          ) : h.type === "question" ? (
-            <div key={i} className="flex flex-col gap-3">
-              <div className="flex max-w-[92%] items-end gap-2 self-start">
-                <div className="rounded-2xl rounded-bl-sm bg-dna px-4 py-3 text-on-dark">
-                  {h.text}
-                </div>
-                {readButton(i)}
-              </div>
-              {pending(h) && h.yesNo !== false && (
-                <div className="flex flex-wrap gap-3">
-                  {(
-                    [
-                      ["yes", c.yes],
-                      ["no", c.no],
-                      ["unsure", c.unsure],
-                    ] as const
-                  ).map(([v, label]) => (
-                    <button
-                      key={v}
-                      onClick={() => send({ role: "user", text: label, value: v })}
-                      className="min-h-[56px] rounded-full border-2 border-dna px-6 text-[20px] font-bold text-dna"
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
           ) : h.type === "message" ? (
             <div key={i} className="flex max-w-[92%] items-end gap-2 self-start">
               <div className="rounded-2xl rounded-bl-sm bg-dna px-4 py-3 text-on-dark">
@@ -297,41 +265,21 @@ export function ChatScreen({
               </div>
               {readButton(i)}
             </div>
-          ) : h.type === "consent_request" ? (
-            <div
-              key={i}
-              className="flex flex-col gap-4 rounded-2xl border-2 border-border bg-background p-5 shadow-sm"
-            >
-              <div className="flex items-start gap-3">
-                <Lock size={28} className="mt-0.5 shrink-0 text-dna" aria-hidden />
-                <p className="flex-1 font-bold">{h.text}</p>
-                {readButton(i)}
-              </div>
-              {pending(h) && (
-                <div className="flex flex-col gap-3">
-                  <button
-                    onClick={() => send({ role: "user", text: c.consentYes, value: "consent_yes" })}
-                    className="btn-app bg-dna text-on-dark"
-                  >
-                    {c.consentYes}
-                  </button>
-                  <button
-                    onClick={() => send({ role: "user", text: c.consentNo, value: "consent_no" })}
-                    className="btn-app border-2 border-dna text-dna"
-                  >
-                    {c.consentNo}
-                  </button>
-                </div>
-              )}
-            </div>
           ) : (
             <FinalCard
               key={i}
               lang={lang}
-              story={story}
               reply={h}
               speaking={speakingIdx === i}
               onRead={() => onReadClick(i)}
+              consentOpen={pending(h) && awaitingConsent(h)}
+              onConsent={(yes) =>
+                send({
+                  role: "user",
+                  text: yes ? c.consentYes : c.consentNo,
+                  value: yes ? "consent_yes" : "consent_no",
+                })
+              }
             />
           ),
         )}
@@ -353,6 +301,32 @@ export function ChatScreen({
         <div ref={endRef} />
       </div>
 
+      {askMic && (
+        <div
+          role="dialog"
+          aria-label={t.pipe.micAsk}
+          data-testid="mic-consent"
+          className="flex shrink-0 flex-col gap-2 border-t-2 border-dna bg-dna-tint px-4 py-3"
+        >
+          <p className="flex items-start gap-2 text-base font-bold text-dna-plum">
+            <Mic size={20} className="mt-0.5 shrink-0" aria-hidden /> {t.pipe.micAsk}
+          </p>
+          <div className="flex gap-3">
+            <button
+              onClick={() => answerMic(true)}
+              className="min-h-[48px] flex-1 rounded-full bg-dna px-4 font-bold text-on-dark"
+            >
+              {t.pipe.micAllow}
+            </button>
+            <button
+              onClick={() => answerMic(false)}
+              className="min-h-[48px] flex-1 rounded-full border-2 border-dna px-4 font-bold text-dna"
+            >
+              {t.pipe.micDeny}
+            </button>
+          </div>
+        </div>
+      )}
       {dictating && (
         <div
           role="status"
@@ -436,51 +410,95 @@ function ReadButton({
 
 function FinalCard({
   lang,
-  story,
   reply,
   speaking,
   onRead,
+  consentOpen,
+  onConsent,
 }: {
   lang: Lang;
-  story: ChatStory;
   reply: Extract<TurvaReply, { type: "final" }>;
   speaking: boolean;
   onRead: () => void;
+  /** The pipeline asked for consent and the user has not answered yet. */
+  consentOpen: boolean;
+  onConsent: (yes: boolean) => void;
 }) {
   const t = i18n[lang];
-  const { Icon, cls } = verdict[reply.stage];
+  const p = t.pipe;
+  const d = reply.decision;
   const [handoff, setHandoff] = useState(false);
   const handoffRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (handoff) handoffRef.current?.scrollIntoView({ block: "end", behavior: "smooth" });
   }, [handoff]);
+  // A person is offered only when the pipeline says so (handoff or a "contact DNA" action).
+  const offerSupport =
+    !!d &&
+    (d.escalation_required ||
+      d.primary_action === "contact_operator_support" ||
+      d.primary_action === "escalate_to_human");
   return (
-    <div className="flex flex-col gap-4 rounded-2xl border-2 border-border bg-background p-5 shadow-sm">
-      <span
-        className={`inline-flex w-fit items-center gap-2 rounded-full px-4 py-1.5 text-[20px] font-bold ${cls}`}
-      >
-        <Icon size={24} aria-hidden /> {t[reply.stage]}
-      </span>
+    <div
+      className="flex flex-col gap-4 rounded-2xl border-2 border-border bg-background p-5 shadow-sm"
+      data-testid="final-card"
+      data-stage={reply.stage}
+    >
+      <StageBadge stage={reply.stage} lang={lang} />
       <h2 className="text-[24px] leading-snug">{reply.headline}</h2>
-      <p className="flex gap-3 rounded-xl bg-bubble px-4 py-3 text-[18px] leading-snug text-ink-secondary">
-        {reply.checked ? (
-          <Info size={24} className="mt-0.5 shrink-0" aria-hidden />
-        ) : (
-          <ShieldOff size={24} className="mt-0.5 shrink-0" aria-hidden />
-        )}
-        {reply.checked ? storyText(lang, story).checkedNote : t.chat.declinedNote}
-      </p>
-      <ol className="flex flex-col gap-3">
-        {reply.steps.slice(0, 4).map((s, i) => (
-          <li key={i} className="flex gap-3">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-dna text-base font-bold text-on-dark">
-              {i + 1}
-            </span>
-            <span className="leading-snug">{s}</span>
-          </li>
-        ))}
-      </ol>
-      <div className="flex flex-col gap-3">
+      {reply.checked && (
+        <p className="flex gap-3 rounded-xl bg-safe px-4 py-3 text-[18px] font-bold leading-snug text-safe-foreground">
+          <ShieldCheck size={24} className="mt-0.5 shrink-0" aria-hidden />
+          {p.checkedAccount}
+        </p>
+      )}
+      {reply.steps.length > 0 && <StepsList steps={reply.steps} />}
+
+      {reply.questions.length > 0 && (
+        <div className="flex flex-col gap-2 rounded-xl bg-bubble px-4 py-3">
+          <p className="flex items-start gap-2 font-bold">
+            <CircleHelp size={22} className="mt-0.5 shrink-0" aria-hidden /> {p.questionIntro}
+          </p>
+          {reply.questions.map((q, i) => (
+            <p key={i} className="text-[20px] font-bold leading-snug text-dna">
+              {q}
+            </p>
+          ))}
+          <p className="text-base leading-snug text-ink-secondary">{p.questionNote}</p>
+        </div>
+      )}
+
+      {reply.consentFor.length > 0 && (
+        <div
+          className="flex flex-col gap-3 rounded-xl border-2 border-dna p-4"
+          data-testid="consent"
+        >
+          <p className="flex items-start gap-3 font-bold">
+            <Lock size={24} className="mt-0.5 shrink-0 text-dna" aria-hidden />
+            {consentText(reply.consentFor, lang)}
+          </p>
+          <p className="text-base text-ink-secondary">
+            {p.consentWhy} <code className="text-sm">{reply.consentFor.join(", ")}</code>
+          </p>
+          {consentOpen && (
+            <div className="flex flex-col gap-3">
+              <button onClick={() => onConsent(true)} className="btn-app bg-dna text-on-dark">
+                {t.chat.consentYes}
+              </button>
+              <button
+                onClick={() => onConsent(false)}
+                className="btn-app border-2 border-dna text-dna"
+              >
+                {t.chat.consentNo}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {d && <WhyPanel decision={d} lang={lang} />}
+
+      <div className="flex flex-col gap-2">
         <button
           onClick={onRead}
           aria-pressed={speaking}
@@ -489,13 +507,16 @@ function FinalCard({
           {speaking ? <Square size={22} aria-hidden /> : <Volume2 size={26} aria-hidden />}
           {speaking ? t.chat.stopReading : t.chat.readAloud}
         </button>
-        <button
-          onClick={() => setHandoff(true)}
-          aria-expanded={handoff}
-          className="btn-app bg-dna text-on-dark"
-        >
-          <Headset size={26} aria-hidden /> {t.chat.support}
-        </button>
+        <p className="text-center text-sm text-ink-secondary">{p.ttsNote}</p>
+        {offerSupport && (
+          <button
+            onClick={() => setHandoff(true)}
+            aria-expanded={handoff}
+            className="btn-app mt-2 bg-dna text-on-dark"
+          >
+            <Headset size={26} aria-hidden /> {t.chat.support}
+          </button>
+        )}
       </div>
       {handoff && (
         <div

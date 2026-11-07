@@ -1,0 +1,101 @@
+# "What the user did" facts -> question topic. Used by dsa/policy.py for decisive questions.
+# Checked by tests/test_contracts_extra.py: every fact is a key of contracts/facts.schema.json, every
+# topic is a key of data/reference/question_topics.json, every clause uses facts.schema.json values.
+#
+# Decisive-question rule (generic, not per situation):
+#   for every fact below that is unknown and whose `askable_when` holds, run the policy with the fact
+#   set to true and to false. If the resulting primary_action or escalation_target differs, the fact
+#   is decisive. Ask at most 2 decisive topics (the pair with the largest spread in risk), and
+#   meanwhile answer from the riskier outcome. A situation's decisive_fact list is only a tie-breaker.
+#
+# `askable_when` is a plausibility gate in the same clause syntax as situations.yaml: the question
+# only makes sense when the story makes the action possible (you can only have typed card details
+# into a page you opened; you can only have shared a code someone asked for). Without the gate,
+# "did you pay?" would be decisive for every unopened lure. An absent fact is 'unknown'.
+version: 1.0.0
+user_did:
+  link_opened:
+    topic: link_details
+    askable_when:
+      any_of:
+      - - contact_channel in [sms, email, chat, ad, app_notification, letter]
+        - journey != suspicious_message
+        - link_verdict != not_checked
+  card_details_entered:
+    topic: card_details_entered
+    askable_when:
+      any_of:
+      - - link_opened == true
+        - lure_ask in [small_payment, card_details, unknown]
+      - - contact_channel == call
+        - lure_ask == card_details
+  credentials_entered:
+    topic: credentials_entered
+    askable_when:
+      any_of:
+      - - link_opened == true
+        - lure_ask in [bank_credentials, id_credentials, account_password, unknown]
+      - - remote_access_given == true
+  code_shared:
+    topic: code_shared
+    askable_when:
+      any_of:
+      - - lure_ask == one_time_code
+        - journey != suspicious_message
+      - - link_opened == true
+        - lure_ask in [bank_credentials, id_credentials]
+  app_installed:
+    topic: app_installed
+    askable_when:
+      any_of:
+      - - lure_ask == app_install
+        - journey != suspicious_message
+  remote_access_given:
+    topic: remote_access_given
+    askable_when:
+      any_of:
+      - - lure_ask == remote_access
+        - journey != suspicious_message
+  attachment_content_enabled:
+    topic: app_installed
+    askable_when:
+      any_of:
+      - - lure_ask == open_attachment
+        - journey != suspicious_message
+  money_transferred:
+    topic:
+      consumer: money_transferred
+      small_business: payment_status
+    askable_when:
+      any_of:
+      - - lure_ask in [money_transfer, bank_detail_change, investment]
+        - journey != suspicious_message
+        - verified_out_of_band != true
+  self_initiated:
+    topic: self_initiated
+    askable_when:
+      any_of:
+      - - sim_change_event == true
+      - - subscription_order_event == true
+      - - unknown_login == true
+      - - unrequested_mfa_prompts == true
+  password_reused:
+    topic: password_reused
+    askable_when:
+      any_of:
+      - - breach_exposed_data == password
+      - - credentials_entered == true
+
+# Facts the user could tell us but that are not asked as decisive questions, with the reason.
+not_asked:
+  verified_out_of_band: no question topic in question_topics.json describes it; it is only read from what the user volunteers.
+
+# Safety screening: asked whenever `ask_when` holds and the fact is unknown, even though the answer
+# does not change the action (the README: "a few non-twin cases also have a must-ask question, such
+# as asking about the user's immediate safety"). It takes the first question slot.
+safety_questions:
+  user_safety_concern:
+    topic: user_safety
+    ask_when:
+      any_of:
+      - - monitoring_suspected == true

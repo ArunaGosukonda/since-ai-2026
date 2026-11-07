@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
-import { keywordVerdict, pickExample, SMS_EXAMPLES } from "./messages";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { classifySms, pickExample, SMS_EXAMPLES } from "./messages";
+import { stageOf } from "./decision";
 
 describe("text messages", () => {
   it("has dataset examples in every language, with only what a phone shows", () => {
@@ -15,10 +16,30 @@ describe("text messages", () => {
     expect(pickExample("sv", first.case_id, () => 0).case_id).not.toBe(first.case_id);
   });
 
-  it("falls back to the pipeline keyword patterns when the pipeline is unreachable", () => {
-    expect(
-      keywordVerdict("Pay the 1.49 EUR handling fee within 24 h: https://x.invalid").stage,
-    ).toBe("scam");
-    expect(keywordVerdict("Running 10 minutes late for dinner, see you soon!").stage).toBe("safe");
+  it("maps the pipeline risk level to the screen, and nothing else", () => {
+    expect(stageOf("none")).toBe("safe");
+    expect(stageOf("low")).toBe("neutral");
+    expect(stageOf("medium")).toBe("careful");
+    expect(stageOf("high")).toBe("scam");
+    expect(stageOf("critical")).toBe("scam");
+    expect(stageOf(undefined)).toBe("unchecked");
+  });
+});
+
+describe("pipeline unreachable: fail closed", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("never calls a message safe when /api/classify fails, even a harmless one", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue(new Response("pipeline unavailable", { status: 502 })),
+    );
+    const v = await classifySms("Anna", "Running 10 minutes late for dinner, see you soon!", "en");
+    expect(v).toEqual({ stage: "unchecked", source: "unavailable" });
+  });
+  it("is unchecked when the request itself throws", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
+    expect((await classifySms("x", "Pay 1.49 EUR: https://x.invalid", "en")).stage).toBe(
+      "unchecked",
+    );
   });
 });

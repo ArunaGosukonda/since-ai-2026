@@ -114,7 +114,7 @@
   {
    "group": "lure",
    "kind": "one_time_code",
-   "pattern": "(koodi|tunnuslu)\\w*\\b.{0,40}\\b(lue|lukea|kerro|kertoa|anna|antaa|luettava|sano|syota)\\b|\\b(lue|lukea|kerro|kertoa|anna|antaa|pyysi|halusi|kysyi|kysyivat|pyysivat)\\b.{0,40}(koodi|tunnuslu)|\\b(read|tell|give|share|send|asked for|wanted|confirm)\\b.{0,30}\\b(codes?|pins?)\\b|\\b(codes?|pins?)\\b.{0,40}\\b(read (it |them )?(back|out)|to (him|her|them))|\\b(las upp|lasa upp|ge|lamna|ville ha|bad om)\\b.{0,30}kod",
+   "pattern": "(koodi|tunnuslu)\\w*\\b.{0,40}\\b(lue|lukea|kerro|kertoa|anna|antaa|luettava|sano|syota)\\b|\\b(lue|lukea|kerro|kertoa|anna|antaa|pyysi|halusi|kysyi|kysyivat|pyysivat)\\b.{0,40}(koodi|tunnuslu)|\\b(read|tell|give|share|send|asked for|wanted|confirm)\\b.{0,30}\\b(codes?|pins?)\\b|\\b(codes?|pins?)\\b.{0,40}\\b(read (it |them )?(back|out)|to (him|her|them))|\\b(las upp|lasa upp|ge|lamna|ville ha|bad om)\\b.{0,30}kod|\\bkod\\w*\\b.{0,40}\\b(las|lasa|laste) (upp|den|dem)\\b",
    "needs_link": false
   },
   {

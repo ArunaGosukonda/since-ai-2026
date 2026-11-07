@@ -12,6 +12,7 @@ import {
 import { i18n, type Lang } from "@/lib/i18n";
 import { CALLER_NUMBER, stageLevel, type Stage } from "@/lib/callScript";
 import { dangerSpans, phraseSpans, splitSpans } from "@/lib/dangerPhrases";
+import type { CallMic } from "@/lib/useLiveCall";
 
 export type Bubble = { line: number; shown: number; text?: string };
 
@@ -19,7 +20,7 @@ function words(s: string) {
   return s.split(" ");
 }
 
-/** What the caller has said in this bubble so far (scripted lines reveal word by word). */
+/** What the caller has said in this bubble so far (live transcript; i18n lines only as a fallback). */
 export function bubbleText(b: Bubble, lang: Lang): string {
   return (
     b.text ??
@@ -34,7 +35,7 @@ export type CallPhase = "ringing" | "inCall";
 export function IncomingCall({
   lang,
   phase,
-  liveMic,
+  mic,
   bubbles,
   stage,
   liveFlags = [],
@@ -43,7 +44,7 @@ export function IncomingCall({
 }: {
   lang: Lang;
   phase: CallPhase;
-  liveMic: boolean;
+  mic: CallMic;
   bubbles: Bubble[];
   stage: Stage;
   liveFlags?: string[];
@@ -54,7 +55,7 @@ export function IncomingCall({
   return (
     <InCall
       lang={lang}
-      liveMic={liveMic}
+      mic={mic}
       bubbles={bubbles}
       stage={stage}
       liveFlags={liveFlags}
@@ -104,14 +105,14 @@ function Ringing({
 
 function InCall({
   lang,
-  liveMic,
+  mic,
   bubbles,
   stage,
   liveFlags,
   onHangUp,
 }: {
   lang: Lang;
-  liveMic: boolean;
+  mic: CallMic;
   bubbles: Bubble[];
   stage: Stage;
   liveFlags: string[];
@@ -122,7 +123,9 @@ function InCall({
   const callSoFar = bubbles.map((b) => bubbleText(b, lang)).join(" ");
   const level = stageLevel(stage);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ block: "end" }), [bubbles]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ block: "end" });
+  }, [bubbles]);
   const segs = [
     { label: t.listening, fill: "bg-navy" },
     { label: i18n[lang].careful, fill: "bg-careful-icon" },
@@ -151,9 +154,26 @@ function InCall({
           ))}
         </span>
       </div>
-      {liveMic && (
+      {mic === "on" && (
         <div className="flex items-center justify-center gap-2 text-base font-bold text-scam">
           <Mic size={18} aria-hidden /> {t.liveMic}
+        </div>
+      )}
+      {mic === "connecting" && (
+        <div
+          role="status"
+          className="flex items-center justify-center gap-2 text-base font-bold text-ink-secondary"
+        >
+          <Mic size={18} className="animate-pulse" aria-hidden /> {i18n[lang].pipe.micConnecting}
+        </div>
+      )}
+      {(mic === "off" || mic === "unavailable") && (
+        <div
+          role="status"
+          data-testid="mic-unavailable"
+          className="mx-auto rounded-full border-2 border-ink-secondary/50 px-4 py-1 text-base font-bold text-ink-secondary"
+        >
+          {i18n[lang].pipe.micUnavailable}
         </div>
       )}
 
@@ -348,4 +368,35 @@ function chime() {
   } catch {
     /* audio unavailable */
   }
+}
+
+/** Microphone consent before a live call is transcribed. Nothing is recorded until Allow. */
+export function CallMicAsk({ lang, onAnswer }: { lang: Lang; onAnswer: (allow: boolean) => void }) {
+  const t = i18n[lang].pipe;
+  return (
+    <div
+      role="dialog"
+      aria-label={t.micAsk}
+      data-testid="call-mic-consent"
+      className="absolute inset-x-3 top-28 z-20 flex flex-col gap-2 rounded-2xl border-2 border-dna bg-dna-tint px-4 py-3 shadow-lg"
+    >
+      <p className="flex items-start gap-2 text-base font-bold text-dna-plum">
+        <Mic size={20} className="mt-0.5 shrink-0" aria-hidden /> {t.micAsk}
+      </p>
+      <div className="flex gap-3">
+        <button
+          onClick={() => onAnswer(true)}
+          className="min-h-[48px] flex-1 rounded-full bg-dna px-4 font-bold text-on-dark"
+        >
+          {t.micAllow}
+        </button>
+        <button
+          onClick={() => onAnswer(false)}
+          className="min-h-[48px] flex-1 rounded-full border-2 border-dna px-4 font-bold text-dna"
+        >
+          {t.micDeny}
+        </button>
+      </div>
+    </div>
+  );
 }

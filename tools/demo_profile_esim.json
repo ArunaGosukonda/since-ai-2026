@@ -1,0 +1,75 @@
+{
+  "_note": "SYNTHETIC DEMO DATA. Not a real customer. Demo persona 'recent eSIM change' (classify_message.py profile \"esim\"), used ONLY when the presenter selects it (key P); the screen then shows \"Demo persona: recent eSIM change\".",
+  "_structure_from": "DSA-D-0003 (data/dev/cases.jsonl): same signal paths and shapes, neutral values except the one event in _demo_story. Signal names are keys of data/reference/signal_dictionary.json; consent split follows its 'consent' field (visible vs requires_consent).",
+  "_demo_story": "One incident on purpose, for the consent demo (SIM-upgrade call): subscription.recent_events holds an eSIM activation 35 minutes ago, copied from DSA-D-0093. It is consent-gated, so it is only read after the user taps 'Yes, check'. Everything else is identical to tools/demo_profile.json.",
+  "audience": "consumer",
+  "user_identified": true,
+  "signals": {
+    "subscription": {
+      "products": [
+        {
+          "type": "mobile",
+          "esim": false
+        },
+        {
+          "type": "home_broadband"
+        }
+      ],
+      "recent_events": [
+        {
+          "type": "esim_activation",
+          "minutes_ago": 35,
+          "channel": "customer_service_phone",
+          "authentication": "personal_details_only",
+          "new_device": "not_previously_seen"
+        },
+        {
+          "type": "invoice_issued",
+          "days_ago": 23,
+          "status": "paid",
+          "channel": "e-invoice"
+        }
+      ],
+      "network_status": {
+        "service": "normal"
+      }
+    },
+    "device": {
+      "summary": {
+        "platform": "android",
+        "os_version": "Android 15",
+        "patch_status": "current",
+        "security_app": "none"
+      },
+      "recent_app_installs": [
+        {
+          "name": "Askelmittari",
+          "source": "official_store",
+          "days_ago": 7,
+          "permissions": [
+            "notifications"
+          ]
+        }
+      ],
+      "security_findings": {
+        "unknown_profiles": [],
+        "remote_access_apps": [],
+        "accessibility_services": []
+      }
+    },
+    "operator_account": {
+      "recent_logins": [
+        {
+          "days_ago": 4,
+          "country": "FI",
+          "device_known": true,
+          "result": "success"
+        }
+      ]
+    },
+    "credential_exposure": {
+      "found": false,
+      "sources": []
+    }
+  }
+}

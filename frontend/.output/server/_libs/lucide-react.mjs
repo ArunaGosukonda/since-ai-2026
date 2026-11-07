@@ -128,6 +128,19 @@ var ArrowLeft = createLucideIcon("arrow-left", [["path", {
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var ArrowRight = createLucideIcon("arrow-right", [["path", {
+	d: "M5 12h14",
+	key: "1ays0h"
+}], ["path", {
+	d: "m12 5 7 7-7 7",
+	key: "xquz4c"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var Battery = createLucideIcon("battery", [["path", {
 	d: "M 22 14 L 22 10",
 	key: "nqc4tb"
@@ -138,6 +151,16 @@ var Battery = createLucideIcon("battery", [["path", {
 	height: "12",
 	rx: "2",
 	key: "13zb55"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var ChevronDown = createLucideIcon("chevron-down", [["path", {
+	d: "m6 9 6 6 6-6",
+	key: "qrunsl"
 }]]);
 /**
 * @license lucide-react v0.575.0 - ISC
@@ -159,6 +182,28 @@ var ChevronUp = createLucideIcon("chevron-up", [["path", {
 	d: "m18 15-6-6-6 6",
 	key: "153udz"
 }]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
+var CircleQuestionMark = createLucideIcon("circle-question-mark", [
+	["circle", {
+		cx: "12",
+		cy: "12",
+		r: "10",
+		key: "1mglay"
+	}],
+	["path", {
+		d: "M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3",
+		key: "1u773s"
+	}],
+	["path", {
+		d: "M12 17h.01",
+		key: "p32p05"
+	}]
+]);
 /**
 * @license lucide-react v0.575.0 - ISC
 *
@@ -554,4 +599,4 @@ var Wifi = createLucideIcon("wifi", [
 	}]
 ]);
 //#endregion
-export { ChevronLeft as C, ChevronUp as S, ArrowLeft as T, MessageCircleQuestionMark as _, Square as a, Headset as b, ShieldCheck as c, Phone as d, PhoneOff as f, MessageSquare as g, Mic as h, Trash2 as i, ShieldBan as l, OctagonAlert as m, Volume2 as n, Signal as o, PhoneIncoming as p, TriangleAlert as r, ShieldOff as s, Wifi as t, SendHorizontal as u, Lock as v, Battery as w, EyeOff as x, Info as y };
+export { ChevronUp as C, ArrowRight as D, Battery as E, ArrowLeft as O, CircleQuestionMark as S, ChevronDown as T, MessageCircleQuestionMark as _, Square as a, Headset as b, ShieldCheck as c, Phone as d, PhoneOff as f, MessageSquare as g, Mic as h, Trash2 as i, ShieldBan as l, OctagonAlert as m, Volume2 as n, Signal as o, PhoneIncoming as p, TriangleAlert as r, ShieldOff as s, Wifi as t, SendHorizontal as u, Lock as v, ChevronLeft as w, EyeOff as x, Info as y };

@@ -1,16 +1,17 @@
 import data from "@/generated/smsExamples.json";
-import { hasDangerAsk } from "@/lib/dangerPhrases";
-import { pushLog, withTimeout } from "@/lib/live";
+import { assess, stageOf, type Decision, type Stage } from "@/lib/decision";
 import type { Lang } from "@/lib/i18n";
 
-/** The project pipeline's verdict on one message (or the keyword fallback when it is unreachable). */
+/**
+ * The project pipeline's verdict on one message. `decision` is the pipeline's whole answer
+ * (risk, action, advice, steps, trace); `stage` is derived from its risk_level only.
+ * source "unavailable": the pipeline could not be reached, stage "unchecked" (never "safe").
+ * source "history": the user's own old messages, which arrived before the demo and were not checked.
+ */
 export type Verdict = {
-  stage: "scam" | "safe";
-  /** The pipeline's advice for the user, in the message language. */
-  reasonText?: string | undefined;
-  riskLevel?: string | undefined;
-  situationId?: string | undefined;
-  source: "pipeline" | "keywords";
+  stage: Stage | "history";
+  decision?: Decision | undefined;
+  source: "pipeline" | "unavailable" | "history";
 };
 
 export type Msg = {
@@ -60,39 +61,15 @@ export const OLD_MESSAGES: Msg[] = [
   },
 ];
 
-/** Pipeline risk levels that get a warning. none / low are shown as a normal message. */
-const WARN = new Set(["medium", "high", "critical"]);
-
-/** Fallback: the pipeline's own keyword patterns, run in the browser (lib/dangerPhrases). */
-export function keywordVerdict(text: string): Verdict {
-  return { stage: hasDangerAsk(text) ? "scam" : "safe", source: "keywords" };
-}
-
-/** Ask the project pipeline (dsa/, via /api/classify) whether a message is a scam. */
+/** Ask the project pipeline (dsa/, via /api/classify) about a message. Fails closed. */
 export async function classifySms(sender: string, body: string, lang: string): Promise<Verdict> {
-  try {
-    const r = await withTimeout(
-      fetch("/api/classify", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sender, body, lang }),
-      }),
-    );
-    if (!r.ok) throw new Error(`classify ${r.status}`);
-    const d = (await r.json()) as { risk_level: string; advice_text: string; situation_id: string };
-    pushLog("pipeline·sms", true, { risk: d.risk_level, situation: d.situation_id });
-    return {
-      stage: WARN.has(d.risk_level) ? "scam" : "safe",
-      reasonText: d.advice_text,
-      riskLevel: d.risk_level,
-      situationId: d.situation_id,
-      source: "pipeline",
-    };
-  } catch (e) {
-    pushLog("pipeline·sms", false, String(e));
-    return keywordVerdict(body);
-  }
+  const d = await assess({ mode: "sms", sender, body, lang });
+  if (!d) return { stage: "unchecked", source: "unavailable" };
+  return { stage: stageOf(d.risk_level), decision: d, source: "pipeline" };
 }
+
+/** Warning stages: the inbox blurs the text and the link is struck through. */
+export const isWarning = (s: Verdict["stage"]) => s === "careful" || s === "scam";
 
 const URL_RE = /https?:\/\/\S+/i;
 

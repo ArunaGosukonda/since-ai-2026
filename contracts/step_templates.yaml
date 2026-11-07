@@ -1,0 +1,370 @@
+# Answer templates, written for this project (not copied from the reference answers).
+# One short sentence per (step ID, language). Every step ID is a key of data/reference/step_vocabulary.json.
+# tests/test_templates.py proves: each step sentence is detected as its own step by dsakit.textcheck.find_steps,
+# contains no term from jargon.json, and triggers no unsafe claim (find_unsafe over all claims).
+# compose.py order: action step, one "why" sentence, remaining steps, question(s), handoff line.
+version: 1.0.0
+steps:
+  dont_open_link:
+    en: Do not open the link in the message.
+    fi: Älä avaa viestin linkkiä.
+    sv: Öppna inte länken i meddelandet.
+  dont_pay_or_transfer:
+    en: Do not pay or send any money.
+    fi: Älä maksa äläkä siirrä rahaa.
+    sv: Betala inte och för inte över några pengar.
+  dont_reply:
+    en: Do not reply to the message.
+    fi: Älä vastaa siihen mitään.
+    sv: Svara inte på meddelandet.
+  delete_or_report_message:
+    en: You can delete the message or report it as spam.
+    fi: Voit poistaa viestin tai ilmoittaa sen roskapostiksi.
+    sv: Du kan radera meddelandet eller rapportera det som skräppost.
+  verify_official_channel:
+    en: Check the matter in the official app or website, opened yourself.
+    fi: Tarkista asia itse virallisesta sovelluksesta tai verkkosivulta.
+    sv: Kontrollera saken själv i den officiella appen eller på webbplatsen.
+  verify_out_of_band:
+    en: Contact the sender through a number or channel you already know.
+    fi: Varmista asia soittamalla lähettäjälle tuttuun numeroon.
+    sv: Kontakta avsändaren på ett nummer du redan känner till.
+  contact_bank_now:
+    en: Call your bank now and tell them what happened.
+    fi: Soita pankkiisi heti ja kerro, mitä tapahtui.
+    sv: Ring din bank nu och berätta vad som har hänt.
+  block_card:
+    en: Ask the bank to have the card blocked.
+    fi: Pyydä pankkia sulkemaan kortti.
+    sv: Be banken att blockera kortet.
+  change_password:
+    en: Change the password from a device you trust.
+    fi: Vaihda salasana luotettavalla laitteella.
+    sv: Byt lösenordet från en enhet du litar på.
+  enable_mfa:
+    en: Turn on two-step verification for the account.
+    fi: Ota käyttöön vahva tunnistautuminen.
+    sv: Slå på tvåstegsverifiering för kontot.
+  use_trusted_device:
+    en: Use another, trusted device for this.
+    fi: Käytä tähän toista, luotettavaa laitetta.
+    sv: Använd en annan, säker enhet för det här.
+  check_password_reuse:
+    en: If you use the same password anywhere else, change it there too.
+    fi: Vaihda se myös muissa palveluissa, joissa käytät samaa salasanaa.
+    sv: Byt också lösenord i andra tjänster där du har samma lösenord.
+  review_sessions:
+    en: Check recent logins and sign out devices you do not recognise.
+    fi: Tarkista viimeaikaiset kirjautumiset ja kirjaudu ulos tuntemattomista laitteista.
+    sv: Kontrollera de senaste inloggningarna och logga ut enheter du inte känner igen.
+  dont_approve_prompts:
+    en: Do not approve any login request you did not start yourself.
+    fi: Älä hyväksy kirjautumispyyntöjä, joita et itse tehnyt.
+    sv: Godkänn inte inloggningar som du inte själv har startat.
+  dont_share_codes:
+    en: Never give a code or PIN to anyone who contacts you.
+    fi: Älä anna koodeja tai tunnuslukuja kenellekään.
+    sv: Lämna aldrig ut koder till någon som kontaktar dig.
+  disconnect_device:
+    en: Turn on flight mode or disconnect the device from the internet.
+    fi: Laita laite lentotilaan tai katkaise sen verkkoyhteys.
+    sv: Sätt enheten i flygläge eller koppla bort den från nätet.
+  remove_app_or_profile:
+    en: Remove the app or program that was installed.
+    fi: Poista asennettu sovellus tai ohjelma.
+    sv: Ta bort appen eller programmet som installerades.
+  get_device_checked:
+    en: Have the device checked with a security scan or by an expert.
+    fi: Tarkistuta laite tietoturvaohjelmalla tai asiantuntijalla.
+    sv: Skanna enheten med ett säkerhetsprogram eller be en expert om hjälp.
+  avoid_banking_on_device:
+    en: Do not use online banking on that device until it is checked.
+    fi: Älä käytä verkkopankkia sillä laitteella ennen kuin se on tarkistettu.
+    sv: Använd inte banken på den enheten förrän den är kontrollerad.
+  contact_operator:
+    en: Contact your operator's customer service right away.
+    fi: Ota heti yhteyttä operaattorin asiakaspalveluun.
+    sv: Kontakta operatörens kundtjänst direkt.
+  lock_subscription:
+    en: Ask the operator to lock your SIM and number.
+    fi: Pyydä operaattoria lukitsemaan liittymäsi ja numerosi.
+    sv: Be operatören att spärra ditt abonnemang och nummer.
+  report_police:
+    en: Report the crime to the police.
+    fi: Tee rikosilmoitus poliisille.
+    sv: Gör en polisanmälan om det som har hänt.
+  report_cyber_authority:
+    en: Tell the National Cyber Security Centre about it.
+    fi: Ilmoita asiasta Kyberturvallisuuskeskukselle.
+    sv: Anmäl det till Cybersäkerhetscentret.
+  keep_evidence:
+    en: Keep the message and screenshots as evidence.
+    fi: Ota viestistä kuvakaappaus ja säilytä se.
+    sv: Spara meddelandet och skärmdumpar som bevis.
+  hang_up_dont_call_back:
+    en: Hang up and do not call the number back.
+    fi: Lopeta puhelu äläkä soita numeroon takaisin.
+    sv: Lägg på och ring inte tillbaka.
+  two_person_approval:
+    en: Have a second person approve payments and bank-detail changes.
+    fi: Vaadi maksuille ja tilimuutoksille toisen henkilön hyväksyntä.
+    sv: Låt två personer godkänna betalningar och kontoändringar.
+  revoke_access:
+    en: Remove access from anyone who should no longer have it.
+    fi: Poista käyttöoikeudet kaikilta, joilla niitä ei enää pitäisi olla.
+    sv: Ta bort behörigheter för den som inte längre ska ha dem.
+  check_forwarding_rules:
+    en: Check the mailbox for forwarding rules you did not set.
+    fi: Tarkista postilaatikon edelleenlähetyssäännöt.
+    sv: Kontrollera om e-posten har regler för vidarebefordran.
+  inform_staff:
+    en: Warn your staff and any affected customers.
+    fi: Varoita työntekijöitä ja asiakkaita.
+    sv: Varna personalen och berörda kunder.
+  dont_open_attachment:
+    en: Do not open the attachment or turn on its content.
+    fi: Älä avaa liitettä äläkä salli sen sisältöä.
+    sv: Öppna inte bilagan och tillåt inte dess innehåll.
+  secure_router:
+    en: Change the router's admin password and update it.
+    fi: Vaihda reitittimen hallintasalasana ja päivitä se.
+    sv: Byt routerns lösenord och uppdatera den.
+  explain_benign:
+    en: This looks normal and genuine.
+    fi: Tämä vaikuttaa aidolta ja tavalliselta.
+    sv: Det här verkar äkta och normalt.
+  seek_support_org:
+    en: Talk to someone you trust or a victim support helpline.
+    fi: Voit soittaa Rikosuhripäivystykseen tai puhua luotettavalle ihmiselle.
+    sv: Prata med någon du litar på eller ring Brottsofferjouren.
+  plan_before_removing:
+    en: Plan your safety before removing anything, because removing it can alert the other person.
+    fi: Suunnittele turvallisuutesi ennen poistamista, sillä toinen osapuoli saattaa huomata sen.
+    sv: Planera din säkerhet innan du tar bort något, eftersom den andra personen kan märka det.
+  notify_data_protection:
+    en: If personal data leaked, the Data Protection Ombudsman must be told within 72 hours.
+    fi: Jos henkilötietoja vuoti, ilmoita tietosuojavaltuutetulle 72 tunnin kuluessa.
+    sv: Om personuppgifter har läckt, anmäl det till Dataombudsmannen inom 72 timmar.
+  decline_request:
+    en: I can't look up or reveal who is behind the number.
+    fi: En voi selvittää, kuka numeron takana on.
+    sv: Jag kan inte ta reda på vem som står bakom numret.
+  check_statements:
+    en: Check your bank statement for payments you do not recognise.
+    fi: Tarkista tilitapahtumat tuntemattomien maksujen varalta.
+    sv: Kontrollera kontoutdraget efter betalningar du inte känner igen.
+  update_device:
+    en: Update your phone's software.
+    fi: Päivitä puhelimen ohjelmisto.
+    sv: Uppdatera telefonens programvara.
+
+# The safer branch's explain_benign, phrased as a condition (used when a decisive question is open).
+benign_if:
+  en: If you did this yourself, this is expected.
+  fi: Jos teit tämän itse, tämä on normaali tilanne.
+  sv: Om du gjorde det själv är det väntat och verkar normalt.
+
+# explain_benign on any route other than S01 (no positive evidence that the contact is genuine): the same
+# step, phrased as a condition on the user's own check through the official channel. True on every
+# route where nothing has been given yet, so it never claims the contact is genuine.
+benign_if_verified:
+  en: If the official app, website or number confirms it, it is genuine and you do not need to do anything else.
+  fi: Jos virallinen sovellus, verkkosivu tai numero vahvistaa asian, se on aito eikä sinun tarvitse tehdä muuta.
+  sv: Om den officiella appen, webbplatsen eller numret bekräftar det är det äkta och du behöver inte göra något mer.
+
+# Closing line of every S01 answer (positive evidence): says plainly that nothing else is needed, plus
+# the one habit that keeps a genuine contact safe. Not a step: it adds no action to a no-action answer.
+no_action_close:
+  en: You do not need to do anything else. If you are later asked for a code, password or payment, check first.
+  fi: Sinun ei tarvitse tehdä muuta. Jos sinulta myöhemmin pyydetään koodia, salasanaa tai maksua, tarkista asia ensin.
+  sv: Du behöver inte göra något mer. Om någon senare ber dig om en kod, ett lösenord eller en betalning, kontrollera först.
+
+# What to do if the answer to a question we ask is "yes", phrased as a condition and placed right after
+# the question. Used only when the answer has no step for that branch already (dsa/compose.py IF_YES).
+if_yes:
+  credentials_entered:
+    en: If you did type a password, change that password now and sign out of all other devices.
+    fi: Jos kirjoitit salasanan, vaihda salasana heti ja kirjaudu ulos kaikilta muilta laitteilta.
+    sv: Om du angav ett lösenord, byt lösenordet nu och logga ut från alla andra enheter.
+
+# One "why" sentence per situation (key "<S>.<audience>" overrides "<S>").
+# A "why" sentence may only state facts that have evidence in the trace. S01 therefore has one sentence per
+# kind of positive evidence (dsa/policy.py s01_evidence; compose picks "S01.<kind>"); the plain "S01" key is a
+# guard that states no fact. "FB.unknown" is the fallback rule FB.unknown_nothing_asked (no positive evidence).
+why:
+  S01:
+    en: From what you describe, this looks like an expected contact.
+    fi: Kuvauksesi perusteella tämä vaikuttaa odotetulta yhteydenotolta.
+    sv: Utifrån det du beskriver verkar det här vara en väntad kontakt.
+  S01.own_action:
+    en: You say you started this yourself, so this is what you would expect to see.
+    fi: Kerroit tehneesi tämän itse, joten tämä on odotettavaa.
+    sv: Du säger att du själv gjorde det, så det här är väntat.
+  S01.verified:
+    en: You checked it through a channel you already knew, and it was confirmed.
+    fi: Tarkistit asian jo tuntemaasi kautta, ja se vahvistettiin.
+    sv: Du kontrollerade det via en kanal du redan kände till, och det bekräftades.
+  S01.expected:
+    en: You say you were expecting this message.
+    fi: Kerroit odottaneesi tätä viestiä.
+    sv: Du säger att du väntade på det här meddelandet.
+  S01.benign_signal:
+    en: Our link check found nothing harmful behind the link.
+    fi: Linkkitarkistuksemme ei löytänyt linkin takaa mitään haitallista.
+    sv: Vår länkkontroll hittade inget skadligt bakom länken.
+  S01.email_only_breach:
+    en: The notice says only your email address was exposed, not a password.
+    fi: Ilmoituksen mukaan vain sähköpostiosoitteesi paljastui, ei salasanaa.
+    sv: Enligt meddelandet läckte bara din e-postadress, inget lösenord.
+  FB.unknown:
+    en: I can't tell from this alone whether it is genuine, so act on it only after you have checked.
+    fi: Tästä en voi päätellä, onko viesti aito, joten toimi vasta, kun olet tarkistanut asian.
+    sv: Jag kan inte avgöra av detta om det är äkta, så gör inget förrän du har kontrollerat det.
+  S02:
+    en: Messages like this try to get a small payment or your card details.
+    fi: Tällaisilla viesteillä yritetään saada pieni maksu tai korttisi tiedot.
+    sv: Sådana meddelanden försöker få en liten betalning eller dina kortuppgifter.
+  S02.small_business:
+    en: Unexpected attachments are a common way to get harmful software onto a computer.
+    fi: Odottamattomat liitteet ovat yleinen tapa saada haittaohjelma koneelle.
+    sv: Oväntade bilagor är ett vanligt sätt att få in skadlig programvara.
+  S03:
+    en: Scammers copy banks, operators and authorities to steal your login details.
+    fi: Huijarit esiintyvät pankkeina, operaattoreina ja viranomaisina saadakseen tunnuksesi.
+    sv: Bedragare utger sig för att vara banker eller myndigheter för att komma åt dina inloggningsuppgifter.
+  S04:
+    en: A sudden request to pay or change bank details is a common fraud, even from a familiar name.
+    fi: Äkillinen pyyntö maksaa tai vaihtaa tilinumero on yleinen huijaus, vaikka nimi olisi tuttu.
+    sv: En plötslig begäran om betalning eller nytt kontonummer är ett vanligt bedrägeri, även från ett namn du känner igen.
+  S05:
+    en: Whoever has these details can take money from your account quickly.
+    fi: Näillä tiedoilla rahaa voidaan viedä tililtäsi nopeasti.
+    sv: Med de uppgifterna kan någon snabbt ta pengar från ditt konto.
+  S06:
+    en: With the password someone can read your mail and get into other accounts.
+    fi: Salasanan avulla joku muu pääsee lukemaan viestejäsi ja muihinkin palveluihin.
+    sv: Med lösenordet kan någon läsa din e-post och komma åt andra konton.
+  S07:
+    en: An app from a link can read your messages and codes.
+    fi: Linkistä asennettu sovellus voi lukea viestejäsi ja koodejasi.
+    sv: En app från en länk kan läsa dina meddelanden och koder.
+  S08:
+    en: With remote access the caller may have seen or changed what is on your computer.
+    fi: Etäyhteydellä soittaja on voinut nähdä tai muuttaa koneesi tietoja.
+    sv: Med fjärråtkomst kan uppringaren ha sett eller ändrat saker på din dator.
+  S09:
+    en: Someone may be moving your number to their own SIM to receive your codes.
+    fi: Joku voi yrittää siirtää numerosi omalle SIM-kortilleen saadakseen koodisi.
+    sv: Någon kan försöka flytta ditt nummer till sitt eget SIM-kort för att få dina koder.
+  S10:
+    en: Someone may be trying to get into your account.
+    fi: Joku saattaa yrittää päästä tilillesi.
+    sv: Någon kan försöka ta sig in på ditt konto.
+  S11:
+    en: Acting within minutes gives the best chance to stop or recover the money.
+    fi: Mitä nopeammin toimit, sitä paremmin rahat voidaan saada takaisin.
+    sv: Ju snabbare du agerar, desto större är chansen att få tillbaka pengarna.
+  S12:
+    en: Harmful software can spread to more computers on the same network.
+    fi: Haittaohjelma voi levitä muihin laitteisiin samassa verkossa.
+    sv: Skadlig programvara kan sprida sig till andra enheter i samma nätverk.
+  S13:
+    en: Real banks and support teams do not phone to ask for codes or access.
+    fi: Oikea pankki, operaattori tai tuki ei soita pyytääkseen koodeja tai etäyhteyttä.
+    sv: Riktiga banker och supportteam ringer inte för att be om koder eller fjärråtkomst.
+  S14:
+    en: If someone close is watching your phone, your safety comes first.
+    fi: Jos joku läheinen seuraa puhelintasi, turvallisuutesi on tärkeintä.
+    sv: Om någon nära dig övervakar telefonen går din säkerhet först.
+  S15:
+    en: Tracing people is a job for the police, not for this service.
+    fi: Ihmisten jäljittäminen kuuluu poliisille, ei tälle palvelulle.
+    sv: Att spåra personer är polisens uppgift och inte vår.
+  S16:
+    en: Leaked passwords are tried on other services within days.
+    fi: Vuotaneita salasanoja kokeillaan nopeasti muissakin palveluissa.
+    sv: Läckta lösenord provas snabbt på andra tjänster.
+  S17:
+    en: Promises of quick, guaranteed returns are a common way to take people's money.
+    fi: Lupaukset nopeasta ja varmasta tuotosta ovat yleinen tapa viedä rahaa.
+    sv: Löften om snabb och säker avkastning är ett vanligt sätt att ta pengar.
+  S18:
+    en: The call asked for nothing, but checking on a number you find yourself is the safe way.
+    fi: Puhelussa ei pyydetty mitään, mutta turvallisinta on tarkistaa asia itse etsimästäsi numerosta.
+    sv: Samtalet bad inte om något, men det säkra är att själv leta upp numret och ringa.
+  S19:
+    en: Your mailbox is being used to send fake invoices to your customers.
+    fi: Postilaatikkoanne käytetään valelaskujen lähettämiseen asiakkaillenne.
+    sv: Er e-post används för att skicka falska fakturor till era kunder.
+
+# One question per askable topic (contracts/fact_topics.yaml). tests: topics_in(question) contains the topic.
+questions:
+  link_details:
+    en: Did you open the link?
+    fi: Avasitko linkin?
+    sv: Öppnade du länken?
+  card_details_entered:
+    en: Did you pay or give your card number on that page?
+    fi: Näppäilitkö korttisi numeron sille sivulle?
+    sv: Lämnade du ditt kortnummer på sidan?
+  credentials_entered:
+    en: Did you log in or type a password anywhere?
+    fi: Kirjauduitko tai kirjoititko salasanan jonnekin?
+    sv: Loggade du in eller angav ett lösenord någonstans?
+  code_shared:
+    en: Did you tell anyone a code or PIN?
+    fi: Kerroitko jollekulle saamasi koodin?
+    sv: Gav du någon en kod?
+  app_installed:
+    en: Did you install anything, or allow content in the file?
+    fi: Asensitko jotain tai sallitko tiedoston sisällön?
+    sv: Installerade du något eller tillät du innehållet i filen?
+  remote_access_given:
+    en: Did you let anyone control your computer remotely?
+    fi: Saiko joku ohjata konettasi etäyhteydellä?
+    sv: Lät du någon styra datorn via fjärranslutning?
+  money_transferred:
+    en: Did you send any money?
+    fi: Siirsitkö jo rahaa?
+    sv: Har du skickat pengar?
+  payment_status:
+    en: Has the payment already been made?
+    fi: Onko maksu jo maksettu?
+    sv: Är fakturan redan betald?
+  self_initiated:
+    en: Did you, or someone you work with, start or order this yourself?
+    fi: Teitkö tai tilasitko tämän itse, tai joku työkaverisi?
+    sv: Gjorde eller beställde du det här själv, eller någon du arbetar med?
+  password_reused:
+    en: Do you use the same password on other services?
+    fi: Käytätkö samaa salasanaa muualla?
+    sv: Använder du samma lösenord på andra ställen?
+  user_safety:
+    en: Are you safe right now?
+    fi: Oletko nyt turvassa?
+    sv: Är du trygg just nu?
+
+# Handoff line per escalation target.
+handoff:
+  operator_support_agent:
+    en: I am passing this to our customer service now, and an agent will join this chat.
+    fi: Siirrän asian nyt asiakaspalvelumme ihmiselle, joka jatkaa tässä keskustelussa.
+    sv: Jag kopplar dig nu till vår kundtjänst, och en handläggare fortsätter här.
+  security_specialist:
+    en: A security specialist from our team will contact you shortly.
+    fi: Tietoturva-asiantuntijamme ottaa sinuun pian yhteyttä.
+    sv: En säkerhetsexpert från oss kontaktar dig inom kort.
+  business_security_support:
+    en: Our business security team will contact you shortly to help.
+    fi: Yritysasiakkaiden tietoturvatiimimme ottaa teihin pian yhteyttä.
+    sv: Vårt säkerhetsteam för företag kontaktar er inom kort.
+  human_advisor:
+    en: A human advisor will join this chat to help you now.
+    fi: Neuvojamme liittyy nyt tähän keskusteluun auttamaan sinua.
+    sv: En rådgivare från oss ansluter nu till chatten för att hjälpa dig.
+
+# Added after the "why" sentence when the forwarded content addresses an AI assistant.
+injection_note:
+  en: The message also contains hidden text aimed at AI assistants, which is a scam trick.
+  fi: Viestissä on myös tekoälylle osoitettua piilotekstiä, mikä on huijarin keino.
+  sv: Meddelandet innehåller också dold text riktad till AI-assistenter, vilket är ett bedrägeritrick.

@@ -1,0 +1,68 @@
+{
+  "_note": "SYNTHETIC DEMO DATA. Not a real customer. The CLEAN default demo user (classify_message.py profile \"default\") standing in for a logged-in user in the phone demo.",
+  "_structure_from": "DSA-D-0003 (data/dev/cases.jsonl): same signal paths and shapes, neutral values except the one event in _demo_story. Signal names are keys of data/reference/signal_dictionary.json; consent split follows its 'consent' field (visible vs requires_consent).",
+  "_demo_story": "No incidents: every value is neutral. The eSIM-activation persona lives in tools/demo_profile_esim.json and is only used when the presenter selects it.",
+  "audience": "consumer",
+  "user_identified": true,
+  "signals": {
+    "subscription": {
+      "products": [
+        {
+          "type": "mobile",
+          "esim": false
+        },
+        {
+          "type": "home_broadband"
+        }
+      ],
+      "recent_events": [
+        {
+          "type": "invoice_issued",
+          "days_ago": 23,
+          "status": "paid",
+          "channel": "e-invoice"
+        }
+      ],
+      "network_status": {
+        "service": "normal"
+      }
+    },
+    "device": {
+      "summary": {
+        "platform": "android",
+        "os_version": "Android 15",
+        "patch_status": "current",
+        "security_app": "none"
+      },
+      "recent_app_installs": [
+        {
+          "name": "Askelmittari",
+          "source": "official_store",
+          "days_ago": 7,
+          "permissions": [
+            "notifications"
+          ]
+        }
+      ],
+      "security_findings": {
+        "unknown_profiles": [],
+        "remote_access_apps": [],
+        "accessibility_services": []
+      }
+    },
+    "operator_account": {
+      "recent_logins": [
+        {
+          "days_ago": 4,
+          "country": "FI",
+          "device_known": true,
+          "result": "success"
+        }
+      ]
+    },
+    "credential_exposure": {
+      "found": false,
+      "sources": []
+    }
+  }
+}

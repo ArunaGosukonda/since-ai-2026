@@ -17,23 +17,17 @@ import { classifySms, OLD_MESSAGES, pickExample, type Msg } from "@/lib/messages
 import {
   bubbleText,
   CallAfter,
+  CallMicAsk,
   CallVerdict,
   IncomingCall,
-  type Bubble,
   type CallPhase,
 } from "@/components/CallScreens";
 import { dangerPhrases } from "@/lib/dangerPhrases";
 import { storyText, type ChatStory } from "@/lib/chat";
-import { useLiveLog, maxStage, type LiveStage } from "@/lib/live";
-import { analyzeCallSentence } from "@/lib/liveAgents";
-import { useLiveStt } from "@/lib/useLiveStt";
-import {
-  CALL_AUDIO,
-  FALLBACK_MS_PER_WORD,
-  LINE_GAP_MS,
-  scriptedResults,
-  type Stage,
-} from "@/lib/callScript";
+import { useLiveLog } from "@/lib/live";
+import { setDemoProfile, useDemoProfile } from "@/lib/decision";
+import { useLiveCall } from "@/lib/useLiveCall";
+import { getMicConsent, setMicConsent } from "@/lib/micConsent";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -100,29 +94,24 @@ function Demo() {
   const [chatKey, setChatKey] = useState(0);
   const [banner, setBanner] = useState(false);
   const bannerTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [live, setLive] = useState(false);
   const [panel, setPanel] = useState(false);
+  // Synthetic demo account: clean by default; the presenter switches to the eSIM persona with P.
+  const demoProfile = useDemoProfile();
   const now = useNow();
   const t = i18n[lang];
   // Risk reached "scam": warn the user over the ongoing call. The call is NOT ended; the user decides.
   const warnScam = () => setScreen("callVerdict");
-  const scripted = useScriptedCall(lang, warnScam);
-  const liveCall = useLiveCall(lang, warnScam);
+  // Calls are transcribed live; after each sentence dsa.pipeline judges everything said so far.
+  const call = useLiveCall(lang, warnScam);
   const [callPhase, setCallPhase] = useState<CallPhase>("ringing");
-  const [callMode, setCallMode] = useState<"scripted" | "live">("scripted");
-  const call = callMode === "live" ? liveCall : scripted;
-  // "What happened": the danger phrases in everything the caller said (pipeline patterns + model flags).
-  const callPhrases = dangerPhrases(
-    call.bubbles.map((b) => bubbleText(b, lang)).join(" "),
-    call.liveFlags,
-  );
-  const liveRef = useRef(live);
-  liveRef.current = live;
+  const [askMic, setAskMic] = useState(false);
+  // "What happened": the danger phrases in everything the caller said (pipeline patterns).
+  const callPhrases = dangerPhrases(call.bubbles.map((b) => bubbleText(b, lang)).join(" "));
   const logEntries = useLiveLog();
   const stopAll = useCallback(() => {
-    scripted.stop();
-    liveCall.stop();
-  }, [scripted.stop, liveCall.stop]);
+    setAskMic(false);
+    call.stop();
+  }, [call.stop]);
 
   /** A text arrives: the project pipeline checks it first, then it lands in the inbox. */
   const [checkingSms, setCheckingSms] = useState(false);
@@ -192,18 +181,18 @@ function Demo() {
   /** The phone rings first; nothing is transcribed until the user answers. */
   const startCall = () => {
     stopAll();
-    setCallMode(liveRef.current ? "live" : "scripted");
     setCallPhase("ringing");
     setScreen("incomingCall");
   };
-  const answerCall = async () => {
+  const answerCall = () => {
     setCallPhase("inCall");
-    if (liveRef.current) {
-      setCallMode("live");
-      if (await liveCall.start()) return;
-    }
-    setCallMode("scripted");
-    scripted.start();
+    if (getMicConsent() === true) void call.start();
+    else setAskMic(true); // nothing is recorded until the user taps Allow
+  };
+  const answerMic = (allow: boolean) => {
+    setAskMic(false);
+    setMicConsent(allow);
+    if (allow) void call.start();
   };
   /** User declines while ringing, or hangs up during the call. */
   const declineCall = () => {
@@ -228,6 +217,8 @@ function Demo() {
   screenRef.current = screen;
   const openChatRef = useRef(openChat);
   openChatRef.current = openChat;
+  const demoProfileRef = useRef(demoProfile);
+  demoProfileRef.current = demoProfile;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -235,6 +226,7 @@ function Demo() {
       if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) return;
       const k = e.key.toLowerCase();
       if (k === "`") setPanel((p) => !p);
+      else if (k === "p") setDemoProfile(demoProfileRef.current === "esim" ? "default" : "esim");
       else if (k === "0") {
         stopRef.current();
         setScreen("home");
@@ -254,8 +246,8 @@ function Demo() {
         setScreen("lock");
         resetMsgRef.current();
         setLang("en");
-        setLive(false);
-      } else if (k === "l") setLive((v) => !v);
+        setDemoProfile("default");
+      }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -305,7 +297,7 @@ function Demo() {
             <IncomingCall
               lang={lang}
               phase={callPhase}
-              liveMic={callMode === "live"}
+              mic={askMic ? "asking" : call.mic}
               bubbles={call.bubbles}
               stage={call.stage}
               liveFlags={call.liveFlags}
@@ -341,7 +333,7 @@ function Demo() {
               onBack={() => setScreen("inbox")}
               onAsk={() => {
                 setChatAbout(openMsg);
-                openChat(openMsg.verdict?.stage === "scam" ? "sms" : null);
+                openChat(openMsg.verdict ? "sms" : null);
               }}
               onDelete={() => {
                 setMessages((l) => l.filter((m) => m.id !== openMsg.id));
@@ -354,12 +346,12 @@ function Demo() {
           <ChatScreen
             key={`${chatKey}-${lang}`}
             lang={lang}
-            story={chatStory ?? "sim"}
             prefill={chatPrefill}
             onBack={goHome}
           />
         )}
         {banner && <StoppedBanner lang={lang} />}
+        {askMic && screen === "incomingCall" && <CallMicAsk lang={lang} onAnswer={answerMic} />}
         {screen === "callVerdict" && (
           <CallVerdict
             lang={lang}
@@ -380,13 +372,22 @@ function Demo() {
         )}
       </div>
 
+      {demoProfile === "esim" && (
+        <div
+          role="status"
+          className="fixed left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-ink/70 px-3 py-1 text-xs font-bold text-on-dark backdrop-blur"
+        >
+          Demo persona: recent eSIM change
+        </div>
+      )}
+
       {panel && (
         <div className="fixed bottom-4 left-4 w-80 rounded-xl bg-ink/70 p-4 text-sm leading-6 text-on-dark backdrop-blur">
           <div className="mb-2 flex items-center gap-2 font-bold">
-            Presenter · {live ? "Live" : "Scripted"}
+            Presenter · decisions: dsa.pipeline · call: live transcription
             {logEntries[0] && !logEntries[0].ok && (
               <span
-                title="Last live call fell back to scripted"
+                title="Last pipeline / voice call failed"
                 className="h-2 w-2 rounded-full bg-ink-secondary"
                 aria-label="fallback used"
               />
@@ -399,7 +400,10 @@ function Demo() {
             <li>0 home screen · R lock + reset</li>
             <li>1 incoming call · A answer · D decline/hang up</li>
             <li>2 random dataset SMS</li>
-            <li>4 DNA Assistant chat · L live/scripted</li>
+            <li>4 DNA Assistant chat (dsa.pipeline)</li>
+            <li>
+              P demo persona: {demoProfile === "esim" ? "recent eSIM change" : "clean (default)"}
+            </li>
             <li>` hide panel</li>
           </ul>
           {logEntries.length > 0 && (
@@ -418,190 +422,4 @@ function Demo() {
       )}
     </main>
   );
-}
-
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-function useScriptedCall(lang: Lang, onScam: () => void) {
-  const [bubbles, setBubbles] = useState<Bubble[]>([]);
-  const [stage, setStage] = useState<Stage>("listening");
-  const [liveFlags, setLiveFlags] = useState<string[]>([]);
-  const [reason, setReason] = useState<string | undefined>(undefined);
-  const token = useRef(0);
-  const audio = useRef<HTMLAudioElement | null>(null);
-  const langRef = useRef(lang);
-  langRef.current = lang;
-  const onScamRef = useRef(onScam);
-  onScamRef.current = onScam;
-
-  const stop = useCallback(() => {
-    token.current++;
-    audio.current?.pause();
-    audio.current = null;
-  }, []);
-
-  const start = useCallback(async () => {
-    stop();
-    const my = token.current;
-    const alive = () => token.current === my;
-    setBubbles([]);
-    setStage("listening");
-    setLiveFlags([]);
-    setReason(undefined);
-    const lines = i18n[langRef.current].call.lines;
-    const wordsOf = (l: string) => l.split(" ").length;
-
-    // One recording of the whole call (English). Each line gets a share of its length in
-    // proportion to its English word count, so the text appears in step with the voice.
-    // Other languages show the translated text on a timer, without the English audio.
-    let lineMs = lines.map((l) => wordsOf(l) * FALLBACK_MS_PER_WORD);
-    if (langRef.current === "en") {
-      const a = new Audio(CALL_AUDIO);
-      audio.current = a;
-      const durMs = await new Promise<number | null>((res) => {
-        const t = setTimeout(() => res(null), 2000);
-        a.onloadedmetadata = () => {
-          clearTimeout(t);
-          res(isFinite(a.duration) ? a.duration * 1000 : null);
-        };
-        a.onerror = () => {
-          clearTimeout(t);
-          res(null);
-        };
-      });
-      if (!alive()) return;
-      if (durMs) {
-        const enWords = i18n.en.call.lines.map(wordsOf);
-        const total = enWords.reduce((x, y) => x + y, 0);
-        lineMs = enWords.map((w) => (durMs * w) / total);
-        a.play().catch(() => {});
-      } else {
-        audio.current = null; // no usable recording: timed text with pauses instead
-      }
-    }
-
-    for (let line = 0; line < lines.length; line++) {
-      if (!alive()) return;
-      if (line > 0 && !audio.current) await sleep(LINE_GAP_MS); // pauses are inside the recording
-      setBubbles((b) => [...b, { line, shown: 0 }]);
-      const words = wordsOf(lines[line]!);
-      const step = lineMs[line]! / words;
-      for (let w = 1; w <= words; w++) {
-        await sleep(step);
-        if (!alive()) return;
-        setBubbles((b) => b.map((x) => (x.line === line ? { ...x, shown: w } : x)));
-      }
-
-      // Analyze sentence using Since AI backend intelligence
-      const curLine = lines[line]!;
-      const soFar = lines.slice(0, line).join(" ");
-      try {
-        const res = await analyzeCallSentence(curLine, soFar, langRef.current);
-        if (res.flags?.length) {
-          setLiveFlags((f) => [...f, ...res.flags.filter((x) => !f.includes(x))]);
-        }
-        if (res.reason) {
-          setReason(res.reason);
-        }
-        if (res.stage && res.stage !== "listening" && res.stage !== "safe") {
-          setStage(res.stage as Stage);
-          if (res.stage === "scam") {
-            if (audio.current) audio.current.volume = 0.3;
-            setTimeout(() => {
-              if (alive()) onScamRef.current();
-            }, 600);
-          }
-        } else {
-          const r = scriptedResults[line];
-          if (r) {
-            setStage(r.stage);
-            if (r.stage === "scam") {
-              if (audio.current) audio.current.volume = 0.3;
-              setTimeout(() => {
-                if (alive()) onScamRef.current();
-              }, 600);
-            }
-          }
-        }
-      } catch {
-        const r = scriptedResults[line];
-        if (r) {
-          setStage(r.stage);
-          if (r.stage === "scam") {
-            if (audio.current) audio.current.volume = 0.3;
-            setTimeout(() => {
-              if (alive()) onScamRef.current();
-            }, 600);
-          }
-        }
-      }
-    }
-  }, [stop]);
-
-  useEffect(() => stop, [stop]);
-  return { bubbles, stage, liveFlags, reason, start, stop };
-}
-
-type LiveBubble = Bubble & { text: string };
-
-function useLiveCall(lang: Lang, onScam: () => void) {
-  const stt = useLiveStt();
-  const [bubbles, setBubbles] = useState<LiveBubble[]>([]);
-  const [stage, setStage] = useState<Stage>("listening");
-  const [liveFlags, setLiveFlags] = useState<string[]>([]);
-  const [reason, setReason] = useState<string | undefined>(undefined);
-  const stageRef = useRef<LiveStage>("listening");
-  const said = useRef<string[]>([]);
-  const token = useRef(0);
-  const onScamRef = useRef(onScam);
-  onScamRef.current = onScam;
-
-  const stop = useCallback(() => {
-    token.current++;
-    stt.stop();
-  }, [stt.stop]);
-
-  const start = useCallback(async () => {
-    stop();
-    const my = token.current;
-    setBubbles([]);
-    setStage("listening");
-    setLiveFlags([]);
-    setReason(undefined);
-    stageRef.current = "listening";
-    said.current = [];
-    const ok = await stt.start(lang, {
-      onPartial: (p) => {
-        if (token.current !== my) return;
-        const line = said.current.length;
-        setBubbles((b) => [...b.filter((x) => x.line !== line), { line, shown: 0, text: p }]);
-      },
-      onCommitted: async (sentence) => {
-        if (token.current !== my) return;
-        const line = said.current.length;
-        const soFar = said.current.join(" ");
-        said.current.push(sentence);
-        setBubbles((b) => [
-          ...b.filter((x) => x.line !== line),
-          { line, shown: 0, text: sentence },
-        ]);
-        const r = await analyzeCallSentence(sentence, soFar, lang);
-        if (token.current !== my) return;
-        if (r.flags.length) setLiveFlags((f) => [...f, ...r.flags.filter((x) => !f.includes(x))]);
-        if (r.reason && r.stage !== "safe" && r.stage !== "listening") setReason(r.reason);
-        const next = maxStage(stageRef.current, r.stage === "safe" ? "listening" : r.stage);
-        if (next === stageRef.current) return;
-        stageRef.current = next;
-        setStage(next as Stage);
-        if (next === "scam")
-          setTimeout(() => {
-            if (token.current === my) onScamRef.current();
-          }, 600);
-      },
-    });
-    return ok && token.current === my;
-  }, [lang, stop, stt.start]);
-
-  useEffect(() => stop, [stop]);
-  return { bubbles, stage, liveFlags, reason, start, stop };
 }

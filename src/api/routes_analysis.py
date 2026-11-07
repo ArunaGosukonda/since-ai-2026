@@ -128,13 +128,14 @@ def handle_analyze_request(req: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
-    """Classifies an SMS text message using BankingValidator and ThreatClassifier.
+    """Classifies an SMS text message or call transcript using the DSA pipeline and BankingValidator.
     
     Expected input:
     {
         "sender": "Unknown",
         "body": "message text",
-        "lang": "en" | "fi" | "sv"
+        "lang": "en" | "fi" | "sv",
+        "mode": "sms" | "chat" | "call"
     }
     """
     sender = str(req.get("sender", "Unknown"))
@@ -149,108 +150,81 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
         re.IGNORECASE,
     ))
 
-    # Evaluate with BankingValidator
-    b_res = _banking_validator.analyze_banking_communication(body, links=links)
-    if b_res:
-        classification = b_res["classification"]
-        if classification == "SUSPICIOUS_OR_MALICIOUS":
-            risk = "critical"
-            urgency = "immediate"
-        elif classification == "INCONCLUSIVE":
-            risk = "medium"
-            urgency = "today"
-        else:
-            risk = "none"
-            urgency = "routine"
-        
-        advice = b_res.get("explanation", "")
-        # Filter jargon from emitted text
-        advice = re.sub(r"\bspoofed\b", "faked", advice, flags=re.IGNORECASE)
-        advice = re.sub(r"\bcredentials\b", "login details", advice, flags=re.IGNORECASE)
-
-        verdict = "SAFE" if risk in ("none", "routine") else ("WARNING" if risk == "medium" else "SUSPICIOUS")
-        return {
-            "risk_level": risk,
-            "verdict": verdict,
-            "urgency": urgency,
-            "primary_action": b_res.get("recommended_action", "verify_via_official_channel"),
-            "advice_text": advice,
-            "advice": advice,
-            "situation_id": "SM-BANKING-NOTICE",
-        }
-
-    # Evaluate with ThreatClassifier ML
+    # 1. Run official DSA pipeline
+    res = None
     try:
-        t_res = _classifier.assess(body, language=lang)
-    except Exception:
-        t_res = {}
+        from tools import classify_message
+        clean_req = dict(req)
+        clean_req["body"] = body
+        clean_req["sender"] = sender
+        clean_req["lang"] = lang
+        clean_req.setdefault("mode", "sms")
+        res = classify_message.run(clean_req)
+    except Exception as e:
+        logger.warning("classify_message execution failed: %s", e)
 
-    t_verdict = t_res.get("tri_state_verdict")
-    
-    # Strict rule: Unverified link in a message must ALWAYS trigger a warning, never safe / none
-    if has_link:
-        if t_verdict == "SUSPICIOUS_OR_MALICIOUS" or bool(re.search(r"(?:pay|maksa|tulli|fee|avgift|urgent|suljetaan)", body, re.IGNORECASE)):
-            adv = (
-                "Do not open the link or reply to this message. This is a common scam designed to capture details or steal money."
-                if lang == "en" else
-                "Älä avaa linkkiä äläkä vastaa viestiin. Tämä on tyypillinen huijausviesti, jolla kalastellaan tietoja tai rahaa."
-            )
-            return {
-                "risk_level": "high",
-                "verdict": "SUSPICIOUS",
-                "urgency": "today",
-                "primary_action": "do_not_interact_and_delete",
-                "advice_text": adv,
-                "advice": adv,
-                "situation_id": "SM-SUSPICIOUS-LINK",
-            }
-        else:
+    # 2. Strict Link Security Enforcement:
+    # An unexpected or unverified message containing or mentioning a link must never be none or low risk.
+    is_initiated_reset = bool(re.search(r"(?:my\s+password\s+reset|requested\s+password|tilasin\s+salasanan)", body, re.IGNORECASE))
+    if has_link and not is_initiated_reset:
+        if not res or res.get("risk_level") in ("none", "low", "routine"):
+            if res is None:
+                res = {}
+            res["risk_level"] = "medium"
+            res["urgency"] = "today"
+            res["primary_action"] = "verify_via_official_channel"
             adv = (
                 "Do not open links in unexpected messages. Check the matter in the service's official app or on their own website."
                 if lang == "en" else
                 "Älä avaa linkkiä odottamattomasta viestistä. Tarkista asia palvelun virallisesta sovelluksesta tai omilta verkkosivuilta."
             )
-            return {
+            res["advice_text"] = adv
+            res["situation_id"] = "SM-UNVERIFIED-LINK"
+            res["steps"] = [
+                "Do not open or click the link in the message.",
+                "Check the matter in the official app or on the organisation's own website.",
+                "Never enter banking codes, passwords, or personal details through external links.",
+            ]
+
+    if not res:
+        # Fallback to BankingValidator and ThreatClassifier
+        b_res = _banking_validator.analyze_banking_communication(body, links=links)
+        if b_res:
+            classification = b_res["classification"]
+            risk = "critical" if classification == "SUSPICIOUS_OR_MALICIOUS" else ("medium" if classification == "INCONCLUSIVE" else "none")
+            urgency = "immediate" if risk == "critical" else ("today" if risk == "medium" else "routine")
+            adv = b_res.get("explanation", "")
+            adv = re.sub(r"\bspoofed\b", "faked", adv, flags=re.IGNORECASE)
+            adv = re.sub(r"\bcredentials\b", "login details", adv, flags=re.IGNORECASE)
+            res = {
+                "risk_level": risk,
+                "urgency": urgency,
+                "primary_action": b_res.get("recommended_action", "verify_via_official_channel"),
+                "advice_text": adv,
+                "situation_id": "SM-BANKING-NOTICE",
+            }
+        else:
+            res = {
                 "risk_level": "medium",
-                "verdict": "WARNING",
                 "urgency": "today",
                 "primary_action": "verify_via_official_channel",
-                "advice_text": adv,
-                "advice": adv,
-                "situation_id": "SM-UNVERIFIED-LINK",
+                "advice_text": "Be cautious with unexpected messages. Verify directly in the official app.",
+                "situation_id": "SM-GENERAL",
             }
 
-    # No link, check if parcel pickup code or doctor reminder
-    if bool(re.search(r"JJFI[0-9]+", body)) or bool(re.search(r"(?:doctor|lääkäri|library|kirjasto|appointment)", body, re.IGNORECASE)):
-        adv = (
-            "This message looks genuine and no action is needed."
-            if lang == "en" else
-            "Tämä viesti vaikuttaa aidolta eikä vaadi toimenpiteitä."
-        )
-        return {
-            "risk_level": "none",
-            "verdict": "SAFE",
-            "urgency": "none",
-            "primary_action": "no_action_needed",
-            "advice_text": adv,
-            "advice": adv,
-            "situation_id": "SM-GENUINE-NOTICE",
-        }
-
-    # General suspicious message default
-    r_lvl = t_res.get("risk_level", "medium")
-    v_map = "SAFE" if r_lvl in ("none", "routine") else ("WARNING" if r_lvl == "medium" else "SUSPICIOUS")
-    adv = (
-        "Be cautious with unsolicited messages. Do not share codes or transfer money."
-        if lang == "en" else
-        "Ole varovainen odottamattomien viestien kanssa. Älä luovuta koodeja tai siirrä rahaa."
-    )
-    return {
-        "risk_level": r_lvl,
-        "verdict": v_map,
-        "urgency": "today",
-        "primary_action": t_res.get("action", "verify_via_official_channel"),
-        "advice_text": adv,
-        "advice": adv,
-        "situation_id": "SM-GENERAL-CHECK",
-    }
+    # Ensure full Decision contract format for TanStack Start assess()
+    r_lvl = res.get("risk_level", "medium")
+    res["verdict"] = "SAFE" if r_lvl in ("none", "routine") else ("WARNING" if r_lvl == "medium" else "SUSPICIOUS")
+    res["advice"] = res.get("advice_text", "")
+    res.setdefault("steps", [res.get("advice_text", "")])
+    res.setdefault("questions_asked", [])
+    res.setdefault("question_topics", [])
+    res.setdefault("consent_requested_for", [])
+    res.setdefault("escalation_required", False)
+    res.setdefault("escalation_target", None)
+    res.setdefault("citations", [])
+    res.setdefault("signals_used", ["artifact"])
+    res.setdefault("confidence", 0.95)
+    res.setdefault("trace", {"situation_id": res.get("situation_id", "S00"), "facts_used": [], "rule_ids": []})
+    res.setdefault("facts", {})
+    return res

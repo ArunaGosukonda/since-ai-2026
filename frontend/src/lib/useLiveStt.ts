@@ -4,7 +4,12 @@ import { sttTokenFn } from "@/lib/live.functions";
 import { pushLog, withTimeout } from "@/lib/live";
 import type { Lang } from "@/lib/i18n";
 
-type Handlers = { onPartial?: (t: string) => void; onCommitted?: (t: string) => void };
+type Handlers = {
+  onPartial?: (t: string) => void;
+  onCommitted?: (t: string) => void;
+  /** The connection ended or failed while listening (for example the ElevenLabs quota ran out). */
+  onDrop?: (reason: string) => void;
+};
 
 /** Streams the microphone to realtime speech-to-text. start() resolves false when unavailable. */
 export function useLiveStt() {
@@ -16,7 +21,18 @@ export function useLiveStt() {
     onCommittedTranscript: (d) => {
       if (d.text.trim()) cb.current.onCommitted?.(d.text);
     },
+    onError: (e) => drop(e instanceof Error ? e.message : "connection error"),
+    onDisconnect: () => drop("disconnected"),
   });
+  /** Reported once per session; stop() clears the handlers first, so a normal hang-up is not a drop. */
+  function drop(reason: string) {
+    const h = cb.current;
+    if (!h.onDrop) return;
+    const { onDrop, ...rest } = h;
+    cb.current = rest;
+    pushLog("stt", false, reason);
+    onDrop(reason);
+  }
   const scribeRef = useRef(scribe);
   scribeRef.current = scribe;
 
@@ -40,6 +56,7 @@ export function useLiveStt() {
       );
       return true;
     } catch (e) {
+      cb.current = {}; // a failed start is reported by the return value, not as a drop
       pushLog("stt", false, String(e));
       try {
         scribeRef.current.disconnect();
