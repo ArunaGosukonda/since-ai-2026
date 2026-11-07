@@ -143,17 +143,18 @@ def get_messages(session_id: str, db_path: Optional[str] = None) -> List[Dict[st
 def set_fact(session_id: str, key: str, value: str, db_path: Optional[str] = None) -> None:
     """Sets a fact inside PostgreSQL case_state.confirmed_facts JSONB."""
     conn = get_db_connection()
+    payload = json.dumps({key: str(value)})
     try:
         with conn.cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO case_state (conversation_id, confirmed_facts)
-                VALUES (%s, jsonb_build_object(%s, %s::text))
+                VALUES (%s, %s::jsonb)
                 ON CONFLICT (conversation_id) DO UPDATE SET
-                    confirmed_facts = case_state.confirmed_facts || jsonb_build_object(%s, %s::text),
+                    confirmed_facts = case_state.confirmed_facts || %s::jsonb,
                     last_updated = CURRENT_TIMESTAMP
                 """,
-                (session_id, key, value, key, value),
+                (session_id, payload, payload),
             )
             conn.commit()
     finally:

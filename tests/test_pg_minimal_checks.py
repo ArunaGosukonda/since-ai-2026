@@ -135,7 +135,7 @@ def check_5_conversation():
     facts = db_session.get_facts(cid)
 
     assert len(msgs) == 1, f"Expected 1 message, got {len(msgs)}"
-    assert msmsgs := msgs[0]["content"] == "Sain huijausviestin"
+    assert msgs[0]["content"] == "Sain huijausviestin"
     assert facts.get("clicked_link") == "no"
 
     logger.info("Conversation %s persisted with %d message and fact clicked_link=%s", cid, len(msgs), facts.get("clicked_link"))
