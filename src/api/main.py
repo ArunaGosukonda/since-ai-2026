@@ -169,18 +169,25 @@ class SinceAIHttpHandler(SimpleHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/api/v1/health":
             self._send_json(200, handle_health_check())
-        elif self.path == "/" or self.path == "/index.html":
-            frontend_index = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/index.html"))
-            if os.path.exists(frontend_index):
-                self._send_file(frontend_index, "text/html; charset=utf-8")
-            else:
-                demo_html = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
-                self._send_file(demo_html, "text/html; charset=utf-8")
+        elif self.path in ("/", "/index.html", "/demo", "/demo.html"):
+            candidates = [
+                os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/.output/public/index.html")),
+                os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/index.html")),
+                os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html")),
+            ]
+            for p in candidates:
+                if os.path.exists(p):
+                    self._send_file(p, "text/html; charset=utf-8")
+                    return
+            self.send_error(404, "Phone Simulator Not Found")
         else:
-            # Check frontend directory
-            frontend_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend"))
+            # Check public output directory first, then frontend directory
+            public_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/.output/public"))
             rel_path = self.path.lstrip("/")
-            file_path = os.path.join(frontend_dir, rel_path)
+            file_path = os.path.join(public_dir, rel_path)
+            if not (os.path.exists(file_path) and os.path.isfile(file_path)):
+                frontend_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend"))
+                file_path = os.path.join(frontend_dir, rel_path)
             if os.path.exists(file_path) and os.path.isfile(file_path):
                 content_type = "text/plain"
                 if file_path.endswith(".js"):
