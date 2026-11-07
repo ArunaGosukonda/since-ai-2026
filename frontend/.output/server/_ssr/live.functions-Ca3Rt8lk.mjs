@@ -1,6 +1,5 @@
 import { a as TSS_SERVER_FUNCTION, l as createServerFn } from "./createServerFn-DDDJMFWM.mjs";
-import processModule from "node:process";
-//#region node_modules/.nitro/vite/services/ssr/assets/live.functions-Buyy_EvO.js
+//#region node_modules/.nitro/vite/services/ssr/assets/live.functions-Ca3Rt8lk.js
 var createServerRpc = (serverFnMeta, splitImportFn) => {
 	const url = "/_serverFn/" + serverFnMeta.id;
 	return Object.assign(splitImportFn, {
@@ -16,15 +15,15 @@ var sttTokenFn_createServerFn_handler = createServerRpc({
 	filename: "src/lib/live.functions.ts"
 }, (opts) => sttTokenFn.__executeServer(opts));
 var sttTokenFn = createServerFn({ method: "POST" }).handler(sttTokenFn_createServerFn_handler, async () => {
-	let key = processModule.env["ELEVENLABS_API_KEY"];
+	let key = process.env["ELEVENLABS_API_KEY"];
 	if (!key) try {
-		const fs = await import("node:fs");
-		const path = await import("node:path");
+		const fs = await import("fs");
+		const path = await import("path");
 		const candidates = [
-			path.resolve(processModule.cwd(), ".env"),
-			path.resolve(processModule.cwd(), "src/.env"),
-			path.resolve(processModule.cwd(), "frontend/.env"),
-			path.resolve(processModule.cwd(), "frontend/src/.env")
+			path.resolve(process.cwd(), ".env"),
+			path.resolve(process.cwd(), "src/.env"),
+			path.resolve(process.cwd(), "frontend/.env"),
+			path.resolve(process.cwd(), "frontend/src/.env")
 		];
 		for (const p of candidates) if (fs.existsSync(p)) {
 			const m = fs.readFileSync(p, "utf-8").match(/^ELEVENLABS_API_KEY=(.+)$/m);

@@ -1,12 +1,12 @@
-import { n as __toESM } from "../_runtime.mjs";
+import { r as __toESM } from "../_runtime.mjs";
 import { _ as createFileRoute, b as useRouter, d as Scripts, f as HeadContent, g as lazyRouteComponent, h as Outlet, m as createRouter, v as createRootRouteWithContext, y as Link } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as require_jsx_runtime, r as require_react } from "../_libs/elevenlabs__react+react.mjs";
 import { t as QueryClientProvider } from "../_libs/tanstack__react-query.mjs";
 import { t as QueryClient } from "../_libs/tanstack__query-core.mjs";
-import processModule from "node:process";
 import { existsSync } from "node:fs";
 import path from "node:path";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-D6Vjc8VZ.js
+import { spawn } from "node:child_process";
+//#region node_modules/.nitro/vite/services/ssr/assets/router-4YquHPPl.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var styles_default = "/assets/styles-BdUUt61F.css";
@@ -178,7 +178,7 @@ function RootComponent() {
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Outlet, {})
 	});
 }
-var $$splitComponentImporter = () => import("./routes-BBhPxkpw.mjs");
+var $$splitComponentImporter = () => import("./routes-BGjhiAxz.mjs");
 var Route$2 = createFileRoute("/")({
 	head: () => ({ meta: [
 		{ title: "DNA Assistant — Scam protection demo" },
@@ -205,18 +205,6 @@ var Route$2 = createFileRoute("/")({
 	] }),
 	component: lazyRouteComponent($$splitComponentImporter, "component")
 });
-/* @__NO_SIDE_EFFECTS__ */
-function createNotImplementedError(name) {
-	return /* @__PURE__ */ new Error(`[unenv] ${name} is not implemented yet!`);
-}
-/* @__NO_SIDE_EFFECTS__ */
-function notImplemented(name) {
-	const fn = () => {
-		throw /* @__PURE__ */ createNotImplementedError(name);
-	};
-	return Object.assign(fn, { __unenv__: true });
-}
-var spawn = /* @__PURE__ */ notImplemented("child_process.spawn");
 /**
 * POST /api/classify  {mode?: "sms" | "chat" | "call", sender?, body, lang, granted?: string[], profile?: "default" | "esim"}
 *   ->  the project pipeline's decision (dsa/pipeline.py via tools/classify_message.py).
@@ -227,7 +215,7 @@ var spawn = /* @__PURE__ */ notImplemented("child_process.spawn");
 * The text is passed as JSON on stdin, never through a shell. Set PYTHON_BIN to choose the interpreter.
 * The child gets only PATH and PYTHONDONTWRITEBYTECODE, never the API keys in process.env.
 */
-var ROOT = path.resolve(processModule.cwd(), "..");
+var ROOT = path.resolve(process.cwd(), "..");
 var SCRIPT = path.join(ROOT, "tools", "classify_message.py");
 var LANGS = /* @__PURE__ */ new Set([
 	"en",
@@ -237,7 +225,7 @@ var LANGS = /* @__PURE__ */ new Set([
 var SIGNAL_PATH = /^[a-z_]+(\.[a-z_]+)?$/;
 var PROFILES = /* @__PURE__ */ new Set(["default", "esim"]);
 function pythonBin() {
-	if (processModule.env["PYTHON_BIN"]) return processModule.env["PYTHON_BIN"];
+	if (process.env["PYTHON_BIN"]) return process.env["PYTHON_BIN"];
 	const venv = path.join(ROOT, ".venv", "bin", "python");
 	return existsSync(venv) ? venv : "python3";
 }
@@ -246,7 +234,7 @@ function runPipeline(input) {
 		const child = spawn(pythonBin(), [SCRIPT], {
 			cwd: ROOT,
 			env: {
-				PATH: processModule.env["PATH"] ?? "/usr/bin:/bin",
+				PATH: process.env["PATH"] ?? "/usr/bin:/bin",
 				PYTHONDONTWRITEBYTECODE: "1"
 			}
 		});
@@ -280,7 +268,7 @@ var Route$1 = createFileRoute("/api/classify")({ server: { handlers: { POST: asy
 	const profile = typeof b?.profile === "string" && PROFILES.has(b.profile) ? b.profile : "default";
 	try {
 		const granted = Array.isArray(b?.granted) ? b.granted.filter((g) => typeof g === "string" && SIGNAL_PATH.test(g)).slice(0, 20) : [];
-		const apiBase = processModule.env["API_BASE_URL"] || "http://127.0.0.1:8080";
+		const apiBase = process.env["API_BASE_URL"] || "http://127.0.0.1:8080";
 		try {
 			const res = await fetch(`${apiBase}/api/classify`, {
 				method: "POST",
@@ -316,12 +304,12 @@ var Route$1 = createFileRoute("/api/classify")({ server: { handlers: { POST: asy
 	}
 } } } });
 var Route = createFileRoute("/api/tts")({ server: { handlers: { POST: async ({ request }) => {
-	const key = processModule.env["ELEVENLABS_API_KEY"];
+	const key = process.env["ELEVENLABS_API_KEY"];
 	if (!key) return new Response("ElevenLabs not connected", { status: 503 });
 	const body = await request.json().catch(() => null);
 	const text = typeof body?.text === "string" ? body.text.slice(0, 1500) : "";
 	if (!text.trim()) return new Response("Missing text", { status: 400 });
-	const voice = processModule.env["ELEVENLABS_VOICE_ID"] || "YSabzCJMvEHDduIDMdwV";
+	const voice = process.env["ELEVENLABS_VOICE_ID"] || "YSabzCJMvEHDduIDMdwV";
 	const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice}?output_format=mp3_44100_128`, {
 		method: "POST",
 		headers: {

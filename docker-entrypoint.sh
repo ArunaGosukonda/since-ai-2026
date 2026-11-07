@@ -29,7 +29,8 @@ except Exception as e:
 # Start TanStack Start SSR Node server in background if present
 if [ -f "/app/frontend/.output/server/index.mjs" ]; then
     echo "Starting TanStack Start Node SSR server on port 3000..."
-    PORT=3000 node /app/frontend/.output/server/index.mjs &
+    PORT=3000 HOST=0.0.0.0 node /app/frontend/.output/server/index.mjs &
+    sleep 2
 else
     echo "Notice: /app/frontend/.output/server/index.mjs not found; SSR server skipped."
 fi
