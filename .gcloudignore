@@ -1,0 +1,17 @@
+.git
+.gitignore
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+data/dev/
+data/test/
+data/samples/
+*_predictions.jsonl
+mt_sample.jsonl
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store

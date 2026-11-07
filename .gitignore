@@ -33,7 +33,6 @@ ENV/
 data/dev/
 data/test/
 data/samples/
-data/reference/unsafe_claims.json
 *_predictions.jsonl
 mt_sample.jsonl
 
