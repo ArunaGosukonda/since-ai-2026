@@ -73,13 +73,19 @@ try:
         payload = await request.json()
         return handle_consent_update(payload)
 
+    index_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/.output/public/index.html"))
+    demo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
+
+    @app.get("/")
+    @app.get("/index.html")
     @app.get("/demo")
     @app.get("/demo.html")
-    async def serve_demo():
-        demo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
+    async def serve_phone_simulator():
+        if os.path.exists(index_path):
+            return FileResponse(index_path)
         if os.path.exists(demo_path):
             return FileResponse(demo_path)
-        return JSONResponse({"error": "demo not found"}, status_code=404)
+        return JSONResponse({"error": "phone_simulator_not_found"}, status_code=404)
 
     # Mount static frontend assets from .output/public
     public_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/.output/public"))
@@ -97,10 +103,17 @@ try:
 
     @app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD", "OPTIONS"])
     async def proxy_ssr_frontend(request: Request, full_path: str):
+        if not full_path or full_path in ("index.html", "demo", "demo.html"):
+            if os.path.exists(index_path):
+                return FileResponse(index_path)
+            if os.path.exists(demo_path):
+                return FileResponse(demo_path)
+
         if full_path and os.path.exists(public_dir):
             static_file = os.path.join(public_dir, full_path)
             if os.path.isfile(static_file):
                 return FileResponse(static_file)
+
         target_url = f"http://127.0.0.1:3000/{full_path}"
         if request.url.query:
             target_url += f"?{request.url.query}"
@@ -132,12 +145,14 @@ try:
             content = e.read()
             from fastapi import Response
             return Response(content=content, status_code=e.code)
-        except Exception as e:
-            # Fallback to demo.html if SSR server is starting or unavailable
-            demo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
-            if os.path.exists(demo_path) and full_path == "":
-                return FileResponse(demo_path)
-            return JSONResponse({"error": "frontend_ssr_unavailable", "detail": str(e)}, status_code=502)
+        except Exception:
+            # Always serve phone simulator on GET requests, never the old fallback
+            if request.method == "GET":
+                if os.path.exists(index_path):
+                    return FileResponse(index_path)
+                if os.path.exists(demo_path):
+                    return FileResponse(demo_path)
+            return JSONResponse({"error": "frontend_unavailable"}, status_code=502)
 
 except ImportError:
     app = None
