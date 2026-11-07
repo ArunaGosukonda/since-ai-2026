@@ -33,6 +33,12 @@ class PostgresRepository:
         conn = get_db_connection()
         try:
             with conn.cursor(row_factory=dict_row) as cursor:
+                if user_id:
+                    cursor.execute(
+                        "INSERT INTO users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING",
+                        (user_id,),
+                    )
+
                 cursor.execute(
                     "SELECT id, user_id, status FROM conversations WHERE id = %s",
                     (conversation_id,),
