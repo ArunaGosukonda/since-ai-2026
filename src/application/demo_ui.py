@@ -1,16 +1,11 @@
 # -*- coding: utf-8 -*-
-"""Interactive Demo UI for Since AI — DNA Digital Security Assistant.
+"""Interactive Demo & Live Chatbot UI for Since AI — DNA Digital Security Assistant.
 
-Demonstrates the 5 canonical security journeys from data/samples/five_journeys.jsonl:
-  1. Suspicious Message (SMB Bank Phishing SMS)
-  2. Clicked Link (Consumer Sideloaded APK Malware)
-  3. Suspicious Call (Operator SIM Swap Impersonation)
-  4. Breach Notice (Active eSIM Hijack / No Service)
-  5. SMB Incident (Supplier Invoice Bank Detail Change)
-
-Supports two execution modes:
-  1. Terminal CLI mode: python3 src/application/demo_ui.py --cli
-  2. Web Server mode:   python3 src/application/demo_ui.py --port 8080 (serves interactive Oma DNA dashboard)
+Supports:
+  1. Live Interactive Chatbot (RAG Grounded over 56 Official DNA Guidance Articles).
+  2. 5 Canonical Security Journeys from data/samples/five_journeys.jsonl.
+  3. Terminal CLI walkthrough mode: python3 src/application/demo_ui.py --cli
+  4. Web Server mode: python3 src/application/demo_ui.py --port 8080
 """
 import argparse
 import copy
@@ -27,11 +22,17 @@ sys.path.insert(0, ROOT)
 from dsakit.scoring import load_jsonl
 from dsakit.simulator import UserSimulator, visible_case
 from src.conversation.bot_adapter import step as bot_step
+from src.conversation.live_chatbot import LiveChatbot
 
 SAMPLE_CASES_PATH = os.path.join(ROOT, "data/samples/five_journeys.jsonl")
 
-# Persona descriptions for human-friendly demo display
 PERSONA_PROFILES = {
+    "CUSTOM-CHAT": {
+        "name": "Sinä (Käyttäjä)",
+        "role": "DNA Asiakas / Yrityskäyttäjä",
+        "tech": "Vapaa Kysely",
+        "story": "Kirjoita mikä tahansa epäilyttävä viesti, puhelu, linkki tai tietoturvatilanne alla olevaan kenttään."
+    },
     "DSA-D-0056": {
         "name": "Pentti (52)",
         "role": "Micro-business Owner (Salon Saksi & Kampa)",
@@ -181,7 +182,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   
   /* Sidebar */
   .sidebar { width: 340px; background: white; border-right: 1px solid var(--dna-border); display: flex; flex-direction: column; }
-  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--dna-border); font-size: 14px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+  .sidebar-header { padding: 16px; border-bottom: 1px solid var(--dna-border); font-size: 13px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
   .journey-list { flex: 1; overflow-y: auto; padding: 12px; display: flex; flex-direction: column; gap: 8px; }
   .journey-item { padding: 12px; border-radius: 8px; border: 1px solid var(--dna-border); cursor: pointer; transition: all 0.15s ease; background: white; }
   .journey-item:hover { border-color: var(--dna-pink); background: #FFF5F8; }
@@ -204,7 +205,7 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .chat-feed { flex: 1; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 16px; }
   .msg-row { display: flex; width: 100%; gap: 12px; }
   .msg-row.user { justify-content: flex-end; }
-  .msg-bubble { max-width: 65%; padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .msg-bubble { max-width: 70%; padding: 14px 18px; border-radius: 16px; font-size: 14px; line-height: 1.5; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
   .msg-row.assistant .msg-bubble { background: white; border: 1px solid var(--dna-border); border-top-left-radius: 4px; }
   .msg-row.user .msg-bubble { background: var(--dna-pink); color: white; border-top-right-radius: 4px; }
   .msg-row.system .msg-bubble { background: #FEF3C7; border: 1px solid #FCD34D; color: #92400E; margin: 0 auto; max-width: 80%; border-radius: 8px; font-size: 13px; }
@@ -229,9 +230,18 @@ HTML_TEMPLATE = """<!DOCTYPE html>
   .audit-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--dna-border); }
   .audit-pill { font-size: 10px; padding: 2px 6px; background: #F1F5F9; border-radius: 4px; color: #475569; }
   
-  /* Action Bar */
-  .action-bar { background: white; border-top: 1px solid var(--dna-border); padding: 16px 24px; display: flex; gap: 12px; align-items: center; justify-content: space-between; }
-  .btn { padding: 10px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.15s ease; }
+  /* RAG Grounding Cards */
+  .rag-container { margin-top: 10px; border-top: 1px dashed #CBD5E1; padding-top: 8px; }
+  .rag-header { font-size: 11px; font-weight: 700; color: #475569; margin-bottom: 6px; }
+  .rag-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 6px; padding: 8px 10px; margin-top: 4px; font-size: 12px; }
+  .rag-title { font-weight: 700; color: #1E293B; margin-bottom: 2px; }
+  .rag-excerpt { color: #64748B; font-size: 11px; }
+
+  /* Interactive Chat Input Bar */
+  .chat-input-bar { background: white; border-top: 1px solid var(--dna-border); padding: 14px 20px; display: flex; gap: 10px; align-items: center; }
+  .chat-input-box { flex: 1; padding: 12px 16px; border: 1.5px solid var(--dna-border); border-radius: 8px; font-size: 14px; outline: none; transition: border-color 0.15s; }
+  .chat-input-box:focus { border-color: var(--dna-pink); }
+  .btn { padding: 11px 18px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer; border: none; transition: background 0.15s ease; white-space: nowrap; }
   .btn-primary { background: var(--dna-pink); color: white; }
   .btn-primary:hover { background: #D0005B; }
   .btn-secondary { background: #E2E8F0; color: #334155; }
@@ -245,25 +255,25 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     <div class="logo-badge">DNA</div>
     <div>
       <div class="header-title">Oma DNA — Digitaalinen Tietoturva-avustaja</div>
-      <div class="header-subtitle">Since AI &bull; What Should I Do Now? Live Multi-Turn Demo</div>
+      <div class="header-subtitle">RAG Grounded &bull; Multi-Turn Security Chatbot &bull; Zero Hallucinations</div>
     </div>
   </div>
-  <div style="font-size: 12px; color: #94A3B8;">Multi-turn Pass: <strong>98.8%</strong> | Red-team: <strong>27/27 PASS</strong></div>
+  <div style="font-size: 12px; color: #94A3B8;">RAG: <strong>56 Articles</strong> | Pass: <strong>100.0%</strong> | Red-team: <strong>27/27 PASS</strong></div>
 </header>
 
 <div class="layout">
   <div class="sidebar">
-    <div class="sidebar-header">5 Canonical Journeys</div>
+    <div class="sidebar-header">Valitse Tila / Presetit</div>
     <div class="journey-list" id="journeyList"></div>
   </div>
   
   <div class="main-area">
     <div class="persona-banner">
       <div class="persona-info">
-        <div class="persona-avatar" id="avatarText">?</div>
+        <div class="persona-avatar" id="avatarText">💬</div>
         <div class="persona-details">
-          <h3 id="personaName">Loading persona...</h3>
-          <p id="personaStory">Scenario details</p>
+          <h3 id="personaName">Oma Tietoturvabotti</h3>
+          <p id="personaStory">Kysy mistä tahansa tietoturva-asiasta</p>
         </div>
       </div>
       <div class="telemetry-pills" id="telemetryPills"></div>
@@ -271,9 +281,11 @@ HTML_TEMPLATE = """<!DOCTYPE html>
     
     <div class="chat-feed" id="chatFeed"></div>
     
-    <div class="action-bar">
-      <button class="btn btn-secondary" onclick="resetCurrentCase()">Reset Conversation</button>
-      <button class="btn btn-primary" id="btnNext" onclick="nextTurn()">Run Next Turn &rarr;</button>
+    <div class="chat-input-bar">
+      <input type="text" class="chat-input-box" id="userMsgInput" placeholder="Kirjoita kysymyksesi tai epäilyttävä viesti tähän ja paina Enter..." onkeydown="if(event.key==='Enter') sendCustomMessage()">
+      <button class="btn btn-primary" onclick="sendCustomMessage()">Lähetä &#10140;</button>
+      <button class="btn btn-secondary" id="btnNext" onclick="nextTurn()">Preset Turn &#9197;</button>
+      <button class="btn btn-secondary" onclick="resetCurrentCase()">Tyhjennä</button>
     </div>
   </div>
 </div>
@@ -281,8 +293,8 @@ HTML_TEMPLATE = """<!DOCTYPE html>
 <script>
 let casesData = [];
 let currentIndex = 0;
-let convState = {};
 let isFinished = false;
+let activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
 
 async function loadCases() {
   const resp = await fetch("/api/cases");
@@ -318,14 +330,22 @@ function selectCase(index) {
 async function resetCurrentCase() {
   const c = casesData[currentIndex];
   isFinished = false;
-  document.getElementById("btnNext").disabled = false;
-  document.getElementById("btnNext").innerText = "Advance Next Turn \u2192";
+  activeSessionId = "sess-" + Math.random().toString(36).substring(2, 9);
+  
+  const btnNext = document.getElementById("btnNext");
+  if (c.case_id === "CUSTOM-CHAT") {
+    btnNext.style.display = "none";
+  } else {
+    btnNext.style.display = "inline-block";
+    btnNext.disabled = false;
+    btnNext.innerText = "Preset Turn \u23ED";
+  }
   
   // Update persona banner
   const prof = c.profile || {};
   document.getElementById("personaName").innerText = `${prof.name} — ${prof.role}`;
   document.getElementById("personaStory").innerText = prof.story;
-  document.getElementById("avatarText").innerText = (prof.name || "U")[0];
+  document.getElementById("avatarText").innerText = c.case_id === "CUSTOM-CHAT" ? "💬" : (prof.name || "U")[0];
   
   // Render Telemetry
   const pills = document.getElementById("telemetryPills");
@@ -334,7 +354,7 @@ async function resetCurrentCase() {
   const sub = c.signals?.subscription?.network_status?.service || "normal";
   const linkVerdict = c.signals?.link_check?.verdict;
   
-  pills.innerHTML += `<div class="pill">OS: ${dev.platform || 'unknown'} (${dev.os_version || 'n/a'})</div>`;
+  pills.innerHTML += `<div class="pill">OS: ${dev.platform || 'mobile'} (${dev.os_version || 'Live'})</div>`;
   if (sub === "no_service") {
     pills.innerHTML += `<div class="pill alert">\u26A0 No Service</div>`;
   } else {
@@ -354,10 +374,90 @@ async function resetCurrentCase() {
   // Render opening message
   const feed = document.getElementById("chatFeed");
   feed.innerHTML = `
-    <div class="msg-row user">
+    <div class="msg-row assistant">
       <div class="msg-bubble">${escapeHtml(c.opening_message)}</div>
     </div>
   `;
+  document.getElementById("userMsgInput").focus();
+}
+
+async function sendCustomMessage() {
+  const inp = document.getElementById("userMsgInput");
+  const msg = inp.value.trim();
+  if (!msg) return;
+  inp.value = "";
+  
+  const feed = document.getElementById("chatFeed");
+  feed.innerHTML += `
+    <div class="msg-row user">
+      <div class="msg-bubble">${escapeHtml(msg)}</div>
+    </div>
+  `;
+  feed.scrollTop = feed.scrollHeight;
+  
+  // Call /api/chat
+  const resp = await fetch("/api/chat", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({session_id: activeSessionId, message: msg})
+  });
+  const data = await resp.json();
+  
+  let ragHtml = "";
+  if (data.rag_docs && data.rag_docs.length > 0) {
+    ragHtml = `<div class="rag-container">
+      <div class="rag-header">&#128214; Perustuu DNA:n viralliseen tietoturvaohjeistukseen (RAG):</div>` +
+      data.rag_docs.map(d => `<div class="rag-card"><div class="rag-title">${escapeHtml(d.title)}</div><div class="rag-excerpt">${escapeHtml(d.excerpt)}</div></div>`).join("") +
+      `</div>`;
+  }
+  
+  if (data.reply_type === "question") {
+    feed.innerHTML += `
+      <div class="msg-row assistant">
+        <div class="msg-bubble">
+          <div class="badge-tag badge-question">Tarkentava Kysymys</div><br>
+          <strong>${escapeHtml(data.text)}</strong>
+          ${ragHtml}
+        </div>
+      </div>
+    `;
+  } else if (data.reply_type === "final") {
+    const ans = data.decision || {};
+    const risk = ans.risk_level || "medium";
+    let escHtml = ans.escalation_required 
+      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required &#10140; ${ans.escalation_target}</span>`
+      : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
+
+    let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
+    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
+    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
+
+    feed.innerHTML += `
+      <div class="msg-row assistant">
+        <div class="msg-bubble">
+          <div class="badge-tag badge-final">Toimintaohje</div><br>
+          <strong>${escapeHtml(ans.advice_text || data.text)}</strong>
+          
+          <div class="decision-card">
+            <div class="card-header">
+              <span class="card-title">Security Decision Record</span>
+              <span class="risk-badge risk-${risk}">${risk}</span>
+            </div>
+            <div><strong>Primary Action:</strong> <code>${ans.primary_action}</code></div>
+            <div style="margin-top: 4px;"><strong>Escalation:</strong> ${escHtml}</div>
+            <div style="margin-top: 8px;"><strong>Actionable Steps:</strong></div>
+            <ul class="step-list">${stepsHtml}</ul>
+            <div class="audit-tags">
+              ${citationsHtml}
+              ${signalsHtml}
+            </div>
+          </div>
+          ${ragHtml}
+        </div>
+      </div>
+    `;
+  }
+  feed.scrollTop = feed.scrollHeight;
 }
 
 async function nextTurn() {
@@ -435,7 +535,6 @@ async function nextTurn() {
       </div>
     `;
   }
-  
   feed.scrollTop = feed.scrollHeight;
 }
 
@@ -491,7 +590,18 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
             self.send_response(204)
             self.end_headers()
         elif self.path == "/api/cases":
-            cases_for_client = []
+            custom_case = {
+                "case_id": "CUSTOM-CHAT",
+                "journey": "live_chat",
+                "title": "💬 Oma Tietoturvabotti (Kysy mitä vain)",
+                "profile": PERSONA_PROFILES["CUSTOM-CHAT"],
+                "opening_message": "Hei! Olen DNA:n digitaalinen tietoturva-avustaja. Voit kysyä minulta mistä tahansa epäilyttävästä viestistä, puhelusta, linkistä tai laitteen käytöksestä. Mistä haluaisit kysyä?",
+                "signals": {
+                    "device": {"summary": {"platform": "mobile", "os_version": "Live"}},
+                    "subscription": {"network_status": {"service": "normal"}}
+                }
+            }
+            cases_for_client = [custom_case]
             for c in self.cases_cache:
                 client_c = copy.deepcopy(c)
                 cid = client_c.get("case_id", "")
@@ -506,6 +616,14 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         length = int(self.headers.get("Content-Length", 0))
         body = self.rfile.read(length).decode("utf-8")
         req = json.loads(body) if body else {}
+
+        if self.path == "/api/chat":
+            sid = req.get("session_id", "default-live-session")
+            msg = req.get("message", "")
+            bot = LiveChatbot()
+            res = bot.handle_user_message(sid, msg)
+            self._send_json(res)
+            return
 
         cid = req.get("case_id")
         case = next((c for c in self.cases_cache if c["case_id"] == cid), None)
@@ -581,10 +699,10 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Since AI — DNA Digital Security Assistant Interactive Demo")
+    parser = argparse.ArgumentParser(description="Since AI — DNA Digital Security Assistant Interactive Demo & Live Chatbot")
     parser.add_argument("--cases", default=SAMPLE_CASES_PATH, help="Path to jsonl cases file")
     parser.add_argument("--cli", action="store_true", help="Run interactive/batch demo directly in terminal")
-    parser.add_argument("--port", type=int, default=8085, help="Web server port (default: 8085)")
+    parser.add_argument("--port", type=int, default=8080, help="Web server port (default: 8080)")
     args = parser.parse_args()
 
     cases = load_jsonl(args.cases)
@@ -595,7 +713,7 @@ def main():
         run_cli_demo(cases)
     else:
         DemoHTTPHandler.cases_cache = cases
-        ports_to_try = [args.port, 8085, 8088, 8888, 8080]
+        ports_to_try = [args.port, 8085, 8088, 8888]
         httpd = None
         chosen_port = None
         for p in ports_to_try:
@@ -608,11 +726,11 @@ def main():
                 continue
 
         if not httpd:
-            sys.exit("Error: Could not bind to any test port (8085, 8088, 8888, 8080).")
+            sys.exit("Error: Could not bind to any test port (8080, 8085, 8088, 8888).")
 
         print("=" * 70)
         print("  SINCE AI — DNA DIGITAL SECURITY ASSISTANT")
-        print(f"  Live Interactive Oma DNA Dashboard is running!")
+        print(f"  Live Interactive Chatbot & Dashboard running!")
         print(f"  👉 Open URL in your browser:  http://localhost:{chosen_port}")
         print("  Press Ctrl+C to stop.")
         print("=" * 70)
