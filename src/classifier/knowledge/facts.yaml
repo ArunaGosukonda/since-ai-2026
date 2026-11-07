@@ -1,0 +1,268 @@
+# Facts: the underlying situations the model predicts.
+#
+# A threat the user describes is mapped to one or more of these facts. They
+# are deliberately generic: every fact should occur in several different
+# scenario families, so a new kind of threat is recognised as a new
+# combination of known facts. Each fact carries the action it calls for.
+#
+# When several facts hold, the one with the lowest `priority` number decides
+# the primary action (the others' actions become secondary actions).
+# Interactions between facts (one fact cancelling or changing another) are
+# NOT handled here; they belong in safety_rules.yaml.
+#
+# Fields
+#   id           fact id
+#   means        when the fact holds (also the definition used for labelling)
+#   not          common confusions: when it does NOT hold
+#   action       action from data/reference/action_vocabulary.json
+#   priority     1 = most urgent
+#   risk         risk level when the fact holds (the answer takes the highest)
+#   urgency      urgency when the fact holds (the answer takes the highest)
+#   escalate     human handoff target, or per audience, or null
+#   steps        advice steps (data/reference/step_vocabulary.json) to give
+#   steps_when   extra steps that apply only in some situations
+#   consent_signals  consent-gated signals worth requesting while the fact is plausible
+#   examples     dev scenario families where it holds (for reviewers)
+#   evidence     how answers (questions.yaml) and named signal checks
+#                (dsa/evidence.py SIGNALS) bear on the fact. Each entry is
+#                `effect: condition`; a condition holds when ALL its keys hold.
+#                Effects shift the model's log-odds: confirms +6, supports +2,
+#                weakens -2, rules_out -6. "supports" leaves room for context
+#                (e.g. a shared code may be a bank, operator or email code).
+
+version: 1
+
+# How fact probabilities become a set of present facts (before the priority
+# lookup). Deliberately asymmetric: calling something harmless needs more
+# confidence than calling it a threat, and when nothing is confidently
+# present the answer falls back to a safe, generally acceptable fact.
+decision:
+  present_at: 0.5                 # a threat fact counts as present at this P
+  legitimate_needs: 0.7           # P(legitimate) needed to call it harmless...
+  no_threat_above: 0.35           # ...and every threat fact must be below this
+  when_unsure: claims_to_be_known_party   # "verify through a channel you know"
+  unsure_risk: low                # ...but no threat is established, so the risk stays low
+  unsure_urgency: routine
+
+facts:
+
+  - id: out_of_scope_request
+    means: "The user asks the assistant for something it must not do: identify, trace, expose or retaliate against a person, or other non-security help."
+    not: "Questions that are unusual but still about the user's own security."
+    action: decline_out_of_scope
+    priority: 1
+    risk: medium
+    urgency: today
+    escalate: null
+    steps: [decline_request, report_police]
+    consent_signals: []
+    examples: [BR-OUT-OF-SCOPE-TRACE]
+    evidence: []    # recognised from the request itself (model + safety rules), not from answers
+
+  - id: personal_safety_risk
+    means: "A person (partner, ex, family member) may threaten, control or monitor the user; physical safety or stalkerware is involved."
+    not: "A user who is merely upset or frightened by a scam."
+    action: escalate_to_human
+    priority: 2
+    risk: high
+    urgency: today
+    escalate: human_advisor
+    steps: [plan_before_removing, seek_support_org]
+    consent_signals: []  # do not inspect the device before safety is clear
+    examples: [BR-MONITORING-APP]
+    evidence:
+      - confirms: {user_safety: [in_danger, concern]}
+      - rules_out: {user_safety: safe}
+
+  - id: money_sent_to_scammer
+    means: "Money has already left the user's or company's account to a scammer (transfer, card payment, invoice paid to a fraudster)."
+    not: "Money was requested but not sent."
+    action: contact_bank_and_block_cards
+    priority: 3
+    risk: critical
+    urgency: immediate
+    escalate: {consumer: human_advisor, small_business: business_security_support}
+    steps: [contact_bank_now, report_police]
+    consent_signals: []
+    examples: [CA-POLICE-SAFE-ACCOUNT, SB-CEO-FRAUD-TWIN/already_paid, BR-OUT-OF-SCOPE-TRACE]
+    evidence:
+      - confirms: {money_transferred: "yes"}
+      - confirms: {payment_status: paid}
+      - supports: {message_content: pay}               # money was asked for: it may already have been paid, worth asking
+      - rules_out: {money_transferred: "no"}
+      - rules_out: {payment_status: not_paid}
+
+  - id: bank_access_exposed
+    means: "Something that lets a criminal use the bank account or card is in their hands: card details, online-bank credentials, a bank confirmation code, an approved bank request, or banking done while a scammer controlled the device."
+    not: "Only an email or other non-bank password was disclosed (that is account_compromised)."
+    action: contact_bank_and_block_cards
+    priority: 3
+    risk: critical
+    urgency: immediate
+    escalate: null
+    steps: [contact_bank_now, block_card]
+    consent_signals: []
+    examples: [CL-BANK-CREDS-ENTERED, CL-CODE-GIVEN-SITE, CL-PARCEL-PAID-TWIN/entered_card, CA-BANK-IMPOSTOR-TWIN/codes_given, CL-REMOTE-ACCESS-TWIN/banking_during_session, CL-APK-INSTALLED]
+    evidence:
+      - confirms: {card_details_entered: "yes"}
+      - confirms: {code_shared: "yes", account_affected: bank}
+      - confirms: {credentials_entered: "yes", account_affected: bank}
+      - supports: {code_shared: "yes"}                  # whose code? context decides
+      - supports: {credentials_entered: "yes"}          # which login? context decides
+      - supports: {credentials_entered: "yes", remote_access_given: "yes"}   # banking while someone watched
+      - rules_out: {credentials_entered: "yes", signal: [link_clean, link_domain_established]}   # logged in on the genuine site, not a phishing copy
+      - rules_out: {account_affected: [email, operator, business, other]}
+      - weakens: {card_details_entered: "no"}
+      - weakens: {credentials_entered: "no", code_shared: "no"}
+
+  - id: device_compromised
+    means: "Malicious or remote-control software is (or may be) running on a device: an app from an unknown source, a remote-support tool a scammer used, enabled document content, ransomware."
+    not: "A suspicious file that was not opened or enabled; a scam call that ended before any access."
+    action: isolate_device_and_scan
+    priority: 4
+    risk: critical
+    urgency: immediate
+    escalate: {consumer: security_specialist, small_business: business_security_support}
+    steps: [disconnect_device, remove_app_or_profile, get_device_checked]
+    consent_signals: [device.recent_app_installs, device.security_findings]
+    examples: [CL-APK-INSTALLED, CL-REMOTE-ACCESS-TWIN, SB-ATTACHMENT-TWIN/enabled_content, SB-RANSOMWARE, BR-MONITORING-APP]
+    evidence:
+      - confirms: {remote_access_given: "yes"}
+      - confirms: {app_installed: "yes"}
+      - confirms: {signal: remote_access_app_found}
+      - confirms: {device_behaviour: abnormal}         # locked/encrypted files, pop-ups, unknown apps: symptoms of malware
+      - supports: {signal: sideloaded_app}
+      - supports: {signal: risky_app_permissions}
+      - supports: {signal: accessibility_service_found}
+      - supports: {signal: unknown_profile_found}
+      - supports: {signal: link_malware}
+      - rules_out: {app_installed: "no", remote_access_given: "no"}
+      - rules_out: {app_installed: "no", device_behaviour: normal}
+      - weakens: {app_installed: "no"}
+      - weakens: {remote_access_given: "no"}
+
+  - id: phone_number_takeover
+    means: "Someone is taking over the user's phone number or operator account: unrequested SIM/eSIM activation or transfer, a SIM transfer code given away, porting, or orders made without the account owner."
+    not: "A SIM change or order the user (or a colleague) made themselves."
+    action: contact_operator_support
+    priority: 5
+    risk: critical
+    urgency: immediate
+    escalate: {consumer: operator_support_agent, small_business: business_security_support}
+    steps: [contact_operator, lock_subscription]
+    consent_signals: [subscription.recent_events, subscription.network_status]
+    examples: [BR-SIM-SWAP-TWIN/not_me, CA-OPERATOR-SIM-CODE-TWIN/code_given, SB-UNEXPECTED-SIM-ORDER-TWIN/nobody_ordered]
+    evidence:
+      - confirms: {code_shared: "yes", account_affected: operator}
+      - confirms: {signal_lost: "yes", self_initiated: "no"}
+      - confirms: {signal: sim_change_recent, self_initiated: "no"}
+      - confirms: {signal: subscription_order_recent, self_initiated: "no"}
+      - supports: {signal: sim_change_recent}
+      - supports: {signal: network_service_lost}
+      - supports: {signal: weakly_authenticated_change}
+      - supports: {signal_lost: "yes"}
+      - supports: {code_shared: "yes"}                  # whose code? context decides
+      - rules_out: {self_initiated: "yes"}               # the user (or a colleague) made the change
+      - weakens: {self_initiated: "no"}                  # alone it is no SIM event (an unordered bill or parcel); the confirms above outweigh this
+      - rules_out: {account_affected: [bank, email]}
+
+  - id: account_compromised
+    means: "Someone else has, or likely has, the password or a session for an account: password typed on a phishing page, exposed in a breach (and reused), login prompts the user did not start, an unknown login, a former employee still logged in, a mailbox sending fraud."
+    not: "A breach that exposed only email addresses; a reset email alone; the user's own login."
+    action: change_password_and_enable_mfa
+    priority: 6
+    risk: high
+    urgency: immediate
+    escalate: null
+    steps: [change_password, review_sessions]
+    steps_when:
+      - {when: {password_reused: "yes"}, add: [check_password_reuse]}
+      - {when: {account_affected: [email, business]}, add: [check_forwarding_rules]}
+    consent_signals: [operator_account.recent_logins, credential_exposure, business.staff_accounts]
+    examples: [BR-BREACH-PASSWORD-REUSED, BR-MFA-FATIGUE, BR-UNKNOWN-LOGIN-TWIN/not_me, CL-EMAIL-PASSWORD-PHISH, SB-EX-EMPLOYEE-ACCESS, SB-MAILBOX-COMPROMISED, SB-STAFF-PHISH-M365, SB-UNEXPECTED-SIM-ORDER-TWIN/nobody_ordered]
+    evidence:
+      - confirms: {credentials_entered: "yes", account_affected: [email, business, other]}
+      - confirms: {password_reused: "yes", signal: password_exposed}
+      - confirms: {signal: former_employee_active}
+      - confirms: {signal: unknown_device_login, self_initiated: "no"}
+      - confirms: {signal: unfamiliar_login_attempt, self_initiated: "no"}
+      - supports: {credentials_entered: "yes"}
+      - supports: {password_reused: "yes"}
+      - supports: {signal: password_exposed}
+      - supports: {signal: unknown_device_login}
+      - supports: {signal: unfamiliar_login_attempt}   # e.g. repeated approval prompts: someone has the password
+      - supports: {code_shared: "yes"}                  # whose code? context decides
+      - rules_out: {credentials_entered: "yes", signal: [link_clean, link_domain_established]}   # logged in on the genuine site, not a phishing copy
+      - rules_out: {self_initiated: "yes"}               # the user's own login / change
+      - rules_out: {account_affected: bank}
+      - weakens: {credentials_entered: "no"}
+
+  - id: claims_to_be_known_party
+    means: "A message or call claims to come from someone the user really deals with (their bank, operator, employer/CEO, supplier, family, a service they use) and cannot be trusted as it stands; nothing has been given away. The fix is to check through a channel the user already knows."
+    not: "A lure from someone the user has no relationship with (that is scam_lure)."
+    action: verify_via_official_channel
+    priority: 7
+    risk: medium
+    urgency: today
+    escalate: null
+    steps: [verify_official_channel]
+    steps_when:
+      - {when: {signal: artifact_has_link}, add: [dont_open_link]}
+      - {when: {message_content: pay}, add: [dont_pay_or_transfer, verify_out_of_band]}
+      - {when: {call_details: sensitive}, add: [dont_share_codes]}
+    consent_signals: []
+    examples: [SM-BANK-LOCKED, SM-FAMILY-NEW-NUMBER, SM-OPERATOR-BILL, SM-STREAMING-EXPIRED, SM-INJECTION-VERIFIED, BR-FAKE-BREACH-NOTICE, BR-UNREQUESTED-RESET, SB-SUPPLIER-BANK-CHANGE, SB-CEO-FRAUD-TWIN/not_paid, SB-TERMINAL-SUPPORT-CALL, CA-BANK-IMPOSTOR-TWIN/no_codes, CA-OPERATOR-SIM-CODE-TWIN/no_code, CA-GENUINE-BANK-CALL]
+    evidence:      # by definition nothing has been given away yet
+      - weakens: {card_details_entered: "yes"}
+      - weakens: {code_shared: "yes"}
+      - weakens: {money_transferred: "yes"}
+      - weakens: {payment_status: paid}
+      - weakens: {call_details: nothing_sensitive, signal: artifact_is_call}   # nothing asked: verifying stays the advice (fallback), at low risk
+
+  - id: scam_lure
+    means: "An unsolicited scam with nothing to verify and nothing given away: prizes, parcel fees, tax refunds, investment ads, tech-support calls, a malicious attachment that was not opened. The fix is to ignore and delete it."
+    not: "A message from a party the user really deals with (that is claims_to_be_known_party)."
+    action: do_not_interact_and_delete
+    priority: 8
+    risk: medium
+    urgency: routine
+    escalate: null
+    steps: [delete_or_report_message]
+    steps_when:
+      - {when: {signal: artifact_has_link}, add: [dont_open_link]}
+      - {when: {message_content: pay}, add: [dont_pay_or_transfer]}
+      - {when: {signal: artifact_is_call}, add: [hang_up_dont_call_back]}
+    consent_signals: []
+    examples: [SM-PARCEL-FEE, SM-PRIZE-EMAIL, SM-TAX-REFUND, SM-INVESTMENT-AD, CA-TECH-SUPPORT, CL-PARCEL-PAID-TWIN/no_input, SB-ATTACHMENT-TWIN/did_not_enable]
+    evidence:
+      - supports: {signal: link_malicious}
+      - weakens: {signal: link_domain_established}      # lures link to throwaway domains
+      - weakens: {card_details_entered: "yes"}
+      - weakens: {app_installed: "yes"}
+
+  - id: legitimate
+    means: "The message, call or event is genuine or harmless: the user's own action, a genuine notice without links or requests, a verified change, a correctly flagged but genuine call."
+    not: "Something that merely looks official."
+    action: no_action_needed
+    priority: 9
+    risk: none
+    urgency: none
+    escalate: null
+    steps: [explain_benign]
+    consent_signals: []
+    examples: [BR-BREACH-EMAIL-ONLY, BR-OWN-MFA-PROMPT, BR-SIM-SWAP-TWIN/was_me, BR-UNKNOWN-LOGIN-TWIN/travelling, CA-GENUINE-FLAGGED, CL-GENUINE-LINK, SB-BENIGN-NEW-PAYEE, SB-GENUINE-REMOTE-SUPPORT, SB-ORDER-BENIGN-ADMIN, SB-SUPPLIER-VERIFIED, SB-UNEXPECTED-SIM-ORDER-TWIN/colleague_ordered, SM-GENUINE-BANK-NOTICE, SM-GENUINE-DELIVERY, SM-GENUINE-OPERATOR-OFFER, SM-OPERATOR-GENUINE-BILL]
+    evidence:
+      - supports: {self_initiated: "yes"}               # but a scam can coincide with a real order: only a nudge
+      - supports: {call_details: nothing_sensitive, signal: artifact_is_call}   # only meaningful about a call
+      - supports: {link_details: no_link}
+      - supports: {signal: link_clean}
+      - supports: {signal: link_domain_established}     # phishing domains are days old
+      - supports: {signal: [link_clean, link_domain_established]}   # both checks agree: the link itself is genuine
+      - weakens: {signal: link_malicious}               # link verdicts have false positives: not decisive
+      - weakens: {signal: call_flagged_scam}
+      - rules_out: {self_initiated: "no"}
+      - rules_out: {card_details_entered: "yes"}
+      - rules_out: {code_shared: "yes"}
+      - rules_out: {money_transferred: "yes"}
+      - rules_out: {remote_access_given: "yes"}
+      - rules_out: {app_installed: "yes"}

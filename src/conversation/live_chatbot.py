@@ -37,6 +37,7 @@ from src.decision.twin_resolver import detect_decisive_question
 from src.explanations.generator import generate_response
 from src.intelligence.banking_validator import BankingValidator
 from src.intelligence.benign_classifier import is_benign_control
+from src.classifier import get_threat_classifier
 from src.intelligence.signal_fusion import fuse_signals, matches_any
 from src.knowledge.rag_retriever import GuidanceRAGRetriever
 from src.security.adversarial_detector import AdversarialDetector
@@ -52,15 +53,25 @@ _repo = PostgresRepository()
 _adversarial = AdversarialDetector()
 _scope_enforcer = ScopeEnforcer()
 _banking_validator = BankingValidator()
+_classifier = get_threat_classifier()
 
 
 def _detect_language(text: str) -> str:
     t = text.lower()
-    if re.search(r"\b(jag|har|inte|och|på|det|som|med|ett|till|är)\b", t):
+    # Swedish distinctive words
+    if re.search(r"\b(jag|har|inte|och|på|det|som|med|ett|till|är|hur|kan|vad|mig|här|ditt|mitt|från)\b", t):
         return "sv"
-    if re.search(r"\b(the|is|and|to|in|of|my|have|has|what|should|scam|call|link|bank)\b", t):
+    # Finnish distinctive words / stems
+    fi_hits = len(re.findall(r"\b(hei|on|olen|ovat|ei|mitä|miten|kuinka|pankki|pankin|puhelu|soitti|viesti|linkki|salasana|rahaa|tili|tilille|tarkista|luovuta|tämä|voinko|luottaa|toimihenkilö)\b", t))
+    # English common & distinctive words
+    en_hits = len(re.findall(r"\b(the|is|are|am|and|to|in|of|my|me|you|your|he|she|it|we|they|have|has|had|what|which|who|whom|whose|why|how|can|could|would|should|do|does|did|will|shall|tell|say|said|ask|asked|chatbot|bot|code|coding|logic|upgrade|card|reset|password|account|call|called|calling|phone|employee|loans?|genuine|trust|person|received|message|scam|fraud|link|bank|banking|benefits)\b", t))
+    if en_hits > fi_hits:
         return "en"
-    return "fi"
+    if fi_hits > 0:
+        return "fi"
+    if en_hits > 0:
+        return "en"
+    return "en" if re.search(r"[a-z]", t) and not re.search(r"[äöå]", t) and en_hits >= fi_hits else "fi"
 
 
 def _detect_journey(text: str) -> str:
@@ -93,6 +104,7 @@ class LiveChatbot:
         self.adversarial = _adversarial
         self.scope = _scope_enforcer
         self.banking = _banking_validator
+        self.classifier = _classifier
 
     def handle_user_message(
         self,
@@ -250,7 +262,7 @@ class LiveChatbot:
                 else:
                     advice = (
                         "Do not disclose details or agree to offers on the call. An inbound caller claiming "
-                        "to be from your bank cannot be verified by voice alone, as caller ID can be spoofed. "
+                        "to be from your bank cannot be verified by voice alone, as caller ID can be faked. "
                         "Verify the offer inside your official mobile banking app or call the bank using the number on your card."
                     )
                     steps = [
@@ -292,7 +304,7 @@ class LiveChatbot:
                         "If you already disclosed your details, call your bank's blocking service immediately.",
                     ]
             else:  # BENIGN
-                risk_lvl = "routine"
+                risk_lvl = "none" if rec_action == "no_action_needed" else "routine"
                 if lang == "fi":
                     advice = (
                         "Ilmoitus vaikuttaa tavanomaiselta pankin ilmoitukselta ilman epäilyttäviä linkkejä tai "
@@ -312,14 +324,35 @@ class LiveChatbot:
                         "Använd inga externa länkar för inloggning.",
                     ]
                 else:
-                    advice = (
-                        "The communication matches a legitimate bank notification without suspicious external links "
-                        "or requests for credentials. You can safely check the update by opening your official bank app."
-                    )
-                    steps = [
-                        "Open your official mobile banking app directly on your device.",
-                        "Never use external links to log in.",
-                    ]
+                    if "password" in message.lower() or "reset" in message.lower():
+                        advice = (
+                            "This appears to be a legitimate password reset notification. If you initiated this reset, "
+                            "you can proceed through the official service. If not, ignore the message and check your account "
+                            "directly in your official banking app."
+                        )
+                        steps = [
+                            "If you requested this reset, proceed through the official service.",
+                            "If unexpected, ignore the message and verify your account in your official app.",
+                        ]
+                    elif any(w in message.lower() for w in ("card", "gold", "loan", "upgrade", "benefits")):
+                        advice = (
+                            "Inquiries about official card upgrades and loan benefits are standard banking services. "
+                            "Since no passwords or security codes were requested, this is considered routine. You can safely "
+                            "review and accept genuine offers inside your official mobile banking app."
+                        )
+                        steps = [
+                            "Check for official card upgrades directly inside your banking app.",
+                            "Never share passwords or verification codes over the phone.",
+                        ]
+                    else:
+                        advice = (
+                            "The communication matches a legitimate bank notification without suspicious external links "
+                            "or requests for security codes. You can safely check the update by opening your official bank app."
+                        )
+                        steps = [
+                            "Open your official mobile banking app directly on your device.",
+                            "Never use external links to log in.",
+                        ]
 
             candidate = {
                 "case_id": session_id,
@@ -354,7 +387,7 @@ class LiveChatbot:
                 "text": final_ans.get("advice_text", ""),
                 "text_en": (
                     "Do not disclose details or agree to offers on the call. An inbound caller claiming "
-                    "to be from your bank cannot be verified by voice alone, as caller ID can be spoofed. "
+                    "to be from your bank cannot be verified by voice alone, as caller ID can be faked. "
                     "Verify the offer inside your official mobile banking app or call the bank using the number on your card."
                     if b_class == "INCONCLUSIVE" else final_ans.get("advice_text", "")
                 ),
@@ -436,6 +469,25 @@ class LiveChatbot:
 
         # Final action resolution
         rec = self.selector.decide(ctx, active_facts, mode="multi_turn")
+
+        # ML Threat Classifier assessment
+        try:
+            ml_res = self.classifier.assess(
+                opening_text,
+                signals=case_dict.get("signals"),
+                answers=active_facts,
+                language=lang,
+                audience=audience,
+            )
+            if ml_res.get("tri_state_verdict") == "BENIGN":
+                is_benign = True
+                if ml_res.get("action") == "no_action_needed":
+                    rec.primary_action = "no_action_needed"
+                    rec.risk_level = "none"
+        except Exception as ml_err:
+            logger.warning("ThreatClassifier evaluation encountered: %s", ml_err)
+            ml_res = {}
+
         advice_text_primary, steps_primary, _, _ = generate_response(
             ctx=ctx,
             action=rec.primary_action,
@@ -476,6 +528,7 @@ class LiveChatbot:
             "confidence": 0.95,
             "abstained": False,
             "outcome_type": outcome,
+            "threat_classification": ml_res,
         }
 
         final_ans, is_valid, _ = self.guard.verify_and_guard(candidate, lang=lang)

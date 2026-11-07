@@ -18,7 +18,10 @@ from typing import Any, Dict, List, Optional, Tuple
 
 # Patterns attempting to exfiltrate proprietary source code or credentials
 PROTECTED_INFO_PATTERNS = [
-    r"(?:show|print|reveal|display|output|give|read|dump|view|export)\s+(?:me\s+)?(?:your\s+)?(?:complete\s+|full\s+|all\s+)?(?:python\s+)?(?:source\s*code|codebase|implementation|architecture)",
+    r"(?:tell|show|print|reveal|display|output|give|read|dump|view|export|explain|describe)\s+(?:me\s+)?(?:your\s+)?(?:complete\s+|full\s+|all\s+)?(?:python\s+)?(?:coding\s*logic|system\s*logic|internal\s*logic|source\s*code|codebase|implementation|architecture)",
+    r"(?:what\s+is|explain|describe|tell\s+me)\s+(?:your\s+)?(?:coding\s*logic|internal\s*logic|underlying\s*code)",
+    r"(?:how\s+(?:are\s+you|were\s+you)\s+(?:coded|programmed|built)|how\s+does\s+your\s+code\s+work)",
+    r"(?:kerro|näytä|selitä)\s+(?:minulle\s+)?(?:koodauslogiikka|lähdekoodi|ohjelmakoodi|sisäinen\s+logiikka)",
     r"(?:show|print|reveal|display|output|give|read|dump)\s+(?:me\s+)?(?:your\s+)?(?:hidden\s+|internal\s+)?(?:system\s+prompt|developer\s+instructions|system\s+instructions)",
     r"(?:show|print|reveal|display|give)\s+(?:me\s+)?(?:your\s+)?(?:gemini\s+)?(?:api[_\s]?key|credentials|secret)",
     r"(?:show|print|reveal|display|give)\s+(?:me\s+)?(?:your\s+)?(?:(?:postgresql|postgres|database|db|sql)\s+)*(?:password|conn(?:ection)?\s*string)",
@@ -216,12 +219,12 @@ class AdversarialDetector:
         else:
             advice = (
                 "Security policy prevents fulfilling this request. Since AI – DNA Digital Security Assistant "
-                "does not disclose system instructions, internal source code, access credentials, or secrets, "
+                "does not disclose system instructions, internal source code, access secrets, or internal logic, "
                 "and does not bypass security policies. How can I assist you with digital security?"
             )
             steps = [
-                "Internal system instructions, source code, and credentials are protected.",
-                "You can ask for advice on suspicious messages, scams, phishing, or device security.",
+                "Internal system instructions, source code, and secrets are protected.",
+                "You can ask for advice on suspicious messages, scams, or device security.",
             ]
 
         return {
@@ -231,13 +234,13 @@ class AdversarialDetector:
             "text": advice,
             "text_en": (
                 "Security policy prevents fulfilling this request. Since AI – DNA Digital Security Assistant "
-                "does not disclose system instructions, internal source code, access credentials, or secrets, "
+                "does not disclose system instructions, internal source code, access secrets, or internal logic, "
                 "and does not bypass security policies. How can I assist you with digital security?"
             ),
             "steps_primary": steps,
             "steps_en": [
-                "Internal system instructions, source code, and credentials are protected.",
-                "You can ask for advice on suspicious messages, scams, phishing, or device security.",
+                "Internal system instructions, source code, and secrets are protected.",
+                "You can ask for advice on suspicious messages, scams, or device security.",
             ],
             "decision": {
                 "risk_level": "low",

@@ -1,0 +1,241 @@
+# Questions the agent may ask the user.
+#
+# One entry per official question topic (data/reference/question_topics.json),
+# so a question is credited by the scorer as asking about that topic. The
+# wording in each language must match that topic's patterns and no more than
+# two topics in total: `bin/dsa knowledge check` verifies this.
+#
+# The agent asks the question, reads the user's free-text reply and maps it to
+# exactly one of `answers` (the `means` line says when each applies). The
+# answer is then passed to the model as a categorical feature.
+#   unsure   the user was asked but does not know      (every question has it)
+#   unknown  the question has not been asked yet       (implicit, never chosen by the agent)
+#
+# Fields
+#   id        the question_topics.json topic id
+#   ask       question text per language (en, fi, sv)
+#   answers   value -> meaning
+#   signals   optional: signal paths that can answer this without asking
+#   prefer_for  optional: audience for which this question wins a tie with a similar one
+#   relevant_when  optional: situations (conditions as in facts.yaml evidence:
+#             answers, `signal`, `audience`) in which this question is worth
+#             asking even before the fact it would reveal looks plausible,
+#             e.g. "was money sent?" whenever money was asked for
+#   skip_when  optional: situations in which the question does not apply and
+#             is never asked, e.g. "what did the caller ask?" about an SMS
+
+version: 1
+
+questions:
+
+  - id: credentials_entered
+    ask:
+      en: "Did you enter your username or password anywhere, for example on the page the link opened?"
+      fi: "Syötitkö käyttäjätunnuksesi tai salasanasi jonnekin, esimerkiksi linkin avaamalle sivulle?"
+      sv: "Angav du ditt användarnamn eller lösenord någonstans, till exempel på sidan som länken öppnade?"
+    relevant_when:
+      - {remote_access_given: "yes"}        # online banking during a remote session
+      - {message_content: log_in}
+    answers:
+      "yes": "Typed login details (username, password, online-bank credentials) into a page, app or remote session."
+      "no": "Did not enter any login details."
+      unsure: "Does not know or remember."
+
+  - id: card_details_entered
+    ask:
+      en: "Did you type your card number or card details anywhere?"
+      fi: "Syötitkö kortin numeron tai korttitietoja jonnekin?"
+      sv: "Skrev du in ditt kortnummer eller dina kortuppgifter någonstans?"
+    relevant_when:
+      - {signal: link_payment_page}
+      - {link_details: opened, message_content: pay}
+    answers:
+      "yes": "Entered card number, expiry or security code, or paid with the card on the page."
+      "no": "Did not enter card details and did not pay."
+      unsure: "Does not know or remember."
+
+  - id: code_shared
+    ask:
+      en: "Did you give anyone a code, or approve a request in your app?"
+      fi: "Annoitko jollekulle koodin tai hyväksyitkö pyynnön sovelluksessasi?"
+      sv: "Gav du någon en kod eller godkände du en begäran i din app?"
+    relevant_when:
+      - {call_details: sensitive}           # callers ask for codes
+    answers:
+      "yes": "Read out, typed or forwarded a one-time/confirmation/transfer code, or approved a login or payment request."
+      "no": "Did not share any code and did not approve anything."
+      unsure: "Does not know, e.g. may have approved something."
+
+  - id: money_transferred
+    ask:
+      en: "Have you already sent or transferred any money?"
+      fi: "Oletko jo lähettänyt tai siirtänyt rahaa?"
+      sv: "Har du redan skickat eller överfört pengar?"
+    relevant_when:
+      - {message_content: pay, audience: consumer}     # a business is asked about the invoice instead
+      - {call_details: sensitive}
+    answers:
+      "yes": "Money has left the account (transfer, card payment, crypto, gift cards)."
+      "no": "Nothing paid or transferred."
+      unsure: "Does not know, e.g. has not checked the account."
+
+  - id: payment_status
+    prefer_for: small_business
+    ask:
+      en: "Has the invoice or payment already been paid?"
+      fi: "Onko lasku tai maksu jo maksettu?"
+      sv: "Har fakturan eller betalningen redan betalats?"
+    relevant_when:
+      - {message_content: pay, audience: small_business}
+    answers:
+      paid: "The requested payment has already been made."
+      not_paid: "The payment has not been made yet."
+      unsure: "Does not know whether it was paid."
+
+  - id: app_installed
+    ask:
+      en: "Did you install an app or program, or open an attachment and enable its content?"
+      fi: "Asensitko sovelluksen tai ohjelman, tai avasitko liitteen ja sallitko sen sisällön?"
+      sv: "Installerade du en app eller ett program, eller öppnade du en bilaga och aktiverade innehållet?"
+    relevant_when:
+      - {signal: artifact_has_attachment}
+    answers:
+      "yes": "Installed an app/program/profile, or opened a file and enabled content or macros."
+      "no": "Installed nothing and did not enable any content."
+      unsure: "Does not know whether something was installed or ran."
+    signals: [device.recent_app_installs, device.security_findings]
+
+  - id: remote_access_given
+    ask:
+      en: "Did you let someone control your computer or phone remotely, for example with a remote support program?"
+      fi: "Annoitko kenellekään etäyhteyden laitteeseesi, esimerkiksi etätukiohjelmalla?"
+      sv: "Gav du någon fjärråtkomst till din enhet, till exempel med ett fjärrsupportprogram?"
+    answers:
+      "yes": "Someone else could see or control the screen, or a remote tool is installed."
+      "no": "No remote access was given."
+      unsure: "Does not know."
+    signals: [device.security_findings]
+
+  - id: link_details
+    ask:
+      en: "Did you open the link in the message?"
+      fi: "Avasitko viestissä olleen linkin?"
+      sv: "Öppnade du länken i meddelandet?"
+    skip_when:
+      - {not_signal: artifact_has_link}     # the forwarded message has no link
+    answers:
+      opened: "Opened or clicked the link."
+      not_opened: "Has not opened the link."
+      no_link: "There is no link in the message."
+      unsure: "Does not know."
+
+  - id: call_details
+    ask:
+      en: "What did the caller ask you for?"
+      fi: "Mitä soittaja pyysi sinulta?"
+      sv: "Vad sa de i samtalet, och vad bad de dig om?"
+    skip_when:
+      - {not_signal: artifact_is_call}      # the user forwarded a message, not a call
+    answers:
+      sensitive: "Asked for codes, passwords, card details, money, remote access or installing something."
+      nothing_sensitive: "Asked for nothing sensitive; only gave information (e.g. a moved appointment, call back on the card's number)."
+      unsure: "Unclear what the caller wanted."
+
+  - id: self_initiated
+    ask:
+      en: "Did you (or someone you know) start this yourself, for example by ordering, logging in or making the change?"
+      fi: "Teitkö itse (tai joku tuttusi) tämän, esimerkiksi tilasit, kirjauduit tai teit muutoksen?"
+      sv: "Var det du själv (eller någon du känner) som gjorde detta, till exempel beställde, loggade in eller gjorde ändringen?"
+    answers:
+      "yes": "The user, a colleague or family member did it: an order, login, eSIM move, new payee, booked support, trip abroad."
+      "no": "Nobody the user knows did it."
+      unsure: "Does not know yet (e.g. still has to ask a colleague)."
+
+  - id: device_behaviour
+    ask:
+      en: "Has your device behaved strangely, for example pop-ups, slowness or apps you don't recognise?"
+      fi: "Onko puhelin tai tietokone toiminut oudosti, esimerkiksi ponnahdusikkunoita, hitautta tai tuntemattomia sovelluksia?"
+      sv: "Har telefonen eller datorn betett sig konstigt, till exempel popup-fönster, långsamhet eller okända appar?"
+    answers:
+      abnormal: "Strange behaviour: flickering, fast battery drain, pop-ups, locked/encrypted files, unknown apps."
+      normal: "Nothing unusual noticed."
+      unsure: "Has not checked or cannot tell."
+    signals: [device.security_findings]
+
+  - id: signal_lost
+    ask:
+      en: "Does your phone still have mobile signal, or has the service stopped?"
+      fi: "Onko puhelimessasi vielä kenttää, vai onko liittymä lakannut toimimasta?"
+      sv: "Har din telefon fortfarande täckning, eller har tjänsten slutat fungera?"
+    answers:
+      "yes": "The phone has lost mobile service (no signal, SIM not working)."
+      "no": "The phone works normally."
+      unsure: "Cannot tell."
+    signals: [subscription.network_status]
+
+  - id: account_affected
+    ask:
+      en: "Which account is this about?"
+      fi: "Mitä tiliä tämä koskee?"
+      sv: "Vilket konto gäller det?"
+    answers:
+      email: "An email account (personal or work)."
+      bank: "Online bank or payment account."
+      operator: "The operator / mobile subscription account."
+      business: "A shared business account, business system or company social media."
+      other: "Another service (social media, shop, streaming...)."
+      unsure: "Does not know which account."
+
+  - id: password_reused
+    ask:
+      en: "Do you use the same password on other services too?"
+      fi: "Käytätkö samaa salasanaa myös muissa palveluissa?"
+      sv: "Använder du samma lösenord även i andra tjänster?"
+    answers:
+      "yes": "The same (or similar) password is used elsewhere."
+      "no": "The password is unique to this service."
+      unsure: "Does not remember."
+
+  - id: business_access
+    ask:
+      en: "Who in your company has access to this account and approves payments?"
+      fi: "Kenellä yrityksessänne on pääsy tähän tiliin ja kuka hyväksyy maksut?"
+      sv: "Vilka i företaget har behörighet till kontot, och vem godkänner betalningar?"
+    answers:
+      weak_controls: "One person alone, a shared password, no two-factor authentication or no IT support."
+      good_controls: "Separate accounts, two people approve payments, or an established IT partner."
+      unsure: "Does not know."
+
+  - id: user_safety
+    ask:
+      en: "Are you safe right now?"
+      fi: "Oletko juuri nyt turvassa?"
+      sv: "Känner du dig trygg just nu?"
+    answers:
+      in_danger: "Feels in immediate danger."
+      concern: "Not in danger right now, but someone has threatened, controls or monitors them."
+      safe: "No safety concern (may still be upset)."
+      unsure: "Does not know."
+
+  - id: time_of_event
+    ask:
+      en: "When did this happen?"
+      fi: "Milloin tämä tapahtui?"
+      sv: "När hände det här?"
+    answers:
+      within_hour: "Minutes ago, up to about an hour."
+      today: "Earlier today."
+      earlier: "Yesterday or before."
+      unsure: "Does not know."
+
+  - id: message_content
+    ask:
+      en: "What does the message say, and what does it ask you to do?"
+      fi: "Mitä viestissä tarkalleen pyydetään tekemään?"
+      sv: "Vad exakt ber meddelandet dig att göra?"
+    answers:
+      pay: "Pay something or update payment details."
+      log_in: "Log in, confirm details or identify yourself."
+      contact: "Call, reply or contact someone."
+      nothing: "Nothing; it only informs."
+      unsure: "Not sure."

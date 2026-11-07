@@ -64,8 +64,13 @@ class BankingValidator:
             return None
 
         # Critical attack triggers that immediately make communication SUSPICIOUS_OR_MALICIOUS
+        # Demands to disclose/enter credentials (active credential extraction)
         asks_credentials = bool(re.search(
-            r"(?:salasana|password|pin|tunnusluku|pankkitunnus|bankid|mobiiliavain|koodi|code|otp|mfa|cvv|cvc|approve.*(?:login|prompt)|accept.*prompt|approve.*mobiiliavain|vahvista.*kirjautumi|kuittaa.*kirjautumi|hyväksy.*kirjautumi)",
+            r"(?:anna|kerro|syötä|lähetä|vahvista|disclose|give|tell|enter|send|share|provide|input|reply\s+with|type|submit)\b.*?(?:salasana|password|pin|tunnusluku|pankkitunnus|bankid|koodi|code|otp|mfa|cvv|cvc)",
+            t,
+            re.IGNORECASE,
+        )) or bool(re.search(
+            r"(?:approve.*(?:login|prompt)|accept.*prompt|approve.*mobiiliavain|vahvista.*kirjautumi|kuittaa.*kirjautumi|hyväksy.*kirjautumi)",
             t,
             re.IGNORECASE,
         ))
@@ -134,10 +139,36 @@ class BankingValidator:
                 "missing_verification": [],
                 "explanation": (
                     "Demands to move money urgently or transfer funds to a 'safe account' are definite signs of "
-                    "authorized push payment (APP) fraud. Banks never instruct customers to move funds to protect them."
+                    "authorized push payment fraud. Banks never instruct customers to move funds to protect them."
                 ),
                 "recommended_action": "verify_via_official_channel",
                 "safe_next_step": "Refuse to transfer any money. Contact your bank immediately using the verified phone number printed on your card.",
+            }
+
+        # Scenario 4: Password reset notifications
+        is_password_reset = bool(re.search(
+            r"(?:password\s*reset|salasanan\s*palautus|reset\s*link|palautuslinkki|resetointi)",
+            t,
+            re.IGNORECASE,
+        ))
+        if is_password_reset and not asks_credentials and not asks_money_transfer and not has_suspicious_link:
+            return {
+                "is_banking": True,
+                "classification": "BENIGN",
+                "evidence_strength": "high",
+                "supporting_indicators": [
+                    "Notification concerns an account password reset.",
+                    "No request to disclose passwords or verification codes.",
+                    "No unauthorized money transfer or remote access requested.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "This appears to be a standard password reset notification. If you initiated this reset "
+                    "yourself, you may proceed through the official service. If you did not request it, do not "
+                    "use the link and check your account security directly in your official banking app."
+                ),
+                "recommended_action": "no_action_needed",
+                "safe_next_step": "If you requested this reset, proceed. If not, ignore it and check your official banking app directly.",
             }
 
         # Scenario 10: Compromised Genuine Employee Account
@@ -148,7 +179,7 @@ class BankingValidator:
                 "evidence_strength": "high",
                 "supporting_indicators": [
                     "Genuine sender address used, but communication exhibits abnormal behavioral patterns.",
-                    "An authenticated employee email account may have been hijacked (Business Email Compromise).",
+                    "An authenticated employee email account may have been hijacked.",
                 ],
                 "missing_verification": ["Out-of-band phone confirmation with known representative"],
                 "explanation": (
@@ -167,7 +198,7 @@ class BankingValidator:
                 "evidence_strength": "medium",
                 "supporting_indicators": [
                     "Unsolicited inbound call from an individual claiming to represent a bank.",
-                    "Caller ID can be forged/spoofed by scammers to display official phone numbers.",
+                    "Caller ID can be faked by scammers to display official phone numbers.",
                     "No cryptographic or channel authentication exists on standard telephone voice calls.",
                 ],
                 "missing_verification": [
@@ -177,10 +208,36 @@ class BankingValidator:
                 ],
                 "explanation": (
                     "An inbound caller claiming to be a bank employee cannot be verified by voice alone, as caller ID "
-                    "is easily spoofed. Even if offering loans or card upgrades, you must independently verify the offer."
+                    "can be faked. You can independently check official offers directly in your bank app."
                 ),
                 "recommended_action": "verify_via_official_channel",
                 "safe_next_step": "Do not disclose personal data or agree to offers on the call. Check your authenticated bank app or call customer service on the back of your card.",
+            }
+
+        # Scenario: Card upgrade / loan / product offer inquiry without credential demands
+        is_product_inquiry = bool(re.search(
+            r"(?:upgrade.*(?:card|kort|gold)|gold\s*card|credit\s*card\s*upgrade|loan[a-z]*\s*(?:i\s*can\s*get|offer)|lainatarjous|korttipäivitys|korottaa.*rajaa|benefits.*(?:upgrading|card))",
+            t,
+            re.IGNORECASE,
+        ))
+        if is_product_inquiry and not asks_credentials and not asks_money_transfer and not remote_access_request and not has_suspicious_link:
+            return {
+                "is_banking": True,
+                "classification": "BENIGN",
+                "evidence_strength": "high",
+                "supporting_indicators": [
+                    "Inquiry concerns routine bank product offerings (card upgrade or loan information).",
+                    "No request for passwords, PINs, or security codes.",
+                    "No demand for urgent money transfer or remote access.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "Bank communications or discussions regarding card upgrades and loan benefits are standard banking services. "
+                    "Since no passwords or security codes were requested, this is considered routine. You can safely review and "
+                    "accept genuine card or loan offers directly within your authenticated mobile banking app."
+                ),
+                "recommended_action": "proceed_normally",
+                "safe_next_step": "You can review and manage your card upgrade and loan options directly inside your official bank app.",
             }
 
         # Scenario 1 & 3: Verified channel, verified sender, legitimate notification

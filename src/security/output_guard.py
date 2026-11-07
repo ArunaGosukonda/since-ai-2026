@@ -83,20 +83,39 @@ class OutputSecurityGate:
         if jargon_hits:
             violations.append(f"Jargon detected: {jargon_hits}")
 
-        # If any violation occurred, substitute with safe fallback
+        # If any violation occurred, substitute with appropriate safe fallback
         if violations:
+            # Preserve policy refusals and scope redirection responses
+            if candidate_answer.get("outcome_type") in ("SECURITY_POLICY_REFUSAL", "OUT_OF_SCOPE", "ACCESS_DENIED"):
+                return candidate_answer, False, violations
+
             safe_fallback = dict(candidate_answer)
-            if lang == "fi":
-                safe_fallback["advice_text"] = "Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta. Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu."
-                safe_fallback["steps"] = ["Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta.", "Älä avaa linkkiä äläkä kirjaudu sen kautta."]
-            elif lang == "sv":
-                safe_fallback["advice_text"] = "Kontrollera saken i den officiella appen eller på organisationens webbplats. Öppna inte länken och överför inte pengar."
-                safe_fallback["steps"] = ["Kontrollera saken i den officiella appen eller på organisationens egen webbplats.", "Öppna inte länken och logga inte in via den."]
+            is_benign_outcome = candidate_answer.get("outcome_type") == "BENIGN" or candidate_answer.get("primary_action") in ("no_action_needed", "proceed_normally", "explain_benign")
+            
+            if is_benign_outcome:
+                if lang == "fi":
+                    safe_fallback["advice_text"] = "Viesti vaikuttaa tavanomaiselta asioinnilta. Voit tarkistaa tiedot suoraan virallisesta sovelluksestasi."
+                    safe_fallback["steps"] = ["Tarkista tiedot suoraan virallisesta sovelluksestasi."]
+                elif lang == "sv":
+                    safe_fallback["advice_text"] = "Meddelandet verkar vara normal kommunikation. Du kan kontrollera uppgifterna i din officiella app."
+                    safe_fallback["steps"] = ["Kontrollera uppgifterna i din officiella app."]
+                else:
+                    safe_fallback["advice_text"] = "The communication appears to be routine. You can check details directly in your official application."
+                    safe_fallback["steps"] = ["Check details directly in your official application."]
+                safe_fallback["primary_action"] = candidate_answer.get("primary_action", "proceed_normally")
+                safe_fallback["risk_level"] = "routine"
             else:
-                safe_fallback["advice_text"] = "Check the matter in the official app or on the organisation's own website. Do not open the link and never transfer money before verifying."
-                safe_fallback["steps"] = ["Check the matter in the official app or on the organisation's own website.", "Do not open the link or enter details through it."]
-            safe_fallback["primary_action"] = "verify_via_official_channel"
-            safe_fallback["risk_level"] = "high"
+                if lang == "fi":
+                    safe_fallback["advice_text"] = "Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta. Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu."
+                    safe_fallback["steps"] = ["Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta.", "Älä avaa linkkiä äläkä kirjaudu sen kautta."]
+                elif lang == "sv":
+                    safe_fallback["advice_text"] = "Kontrollera saken i den officiella appen eller på organisationens webbplats. Öppna inte länken och överför inte pengar."
+                    safe_fallback["steps"] = ["Kontrollera saken i den officiella appen eller på organisationens egen webbplats.", "Öppna inte länken och logga inte in via den."]
+                else:
+                    safe_fallback["advice_text"] = "Check the matter in the official app or on the organisation's own website. Do not open the link and never transfer money before verifying."
+                    safe_fallback["steps"] = ["Check the matter in the official app or on the organisation's own website.", "Do not open the link or enter details through it."]
+                safe_fallback["primary_action"] = "verify_via_official_channel"
+                safe_fallback["risk_level"] = "high"
             return safe_fallback, False, violations
 
         return candidate_answer, True, []
