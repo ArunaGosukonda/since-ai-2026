@@ -1,6 +1,6 @@
 globalThis.__nitro_main__ = import.meta.url;
 import { i as serve, r as NodeResponse } from "./_libs/h3-v2+rou3+srvx.mjs";
-import { i as toEventHandler, n as defineHandler, o as HTTPError, r as defineLazyEventHandler, t as H3Core } from "./_libs/h3+rou3+srvx.mjs";
+import { a as HTTPError, i as toEventHandler, n as defineHandler, r as defineLazyEventHandler, t as H3Core } from "./_libs/h3+rou3+srvx.mjs";
 import { i as withoutTrailingSlash, n as joinURL, r as withLeadingSlash, t as decodePath } from "./_libs/ufo.mjs";
 import { promises } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -27,56 +27,56 @@ var public_assets_data_default = {
 	"/dna-logo.png": {
 		"type": "image/png",
 		"etag": "\"7b8-7E7bgPGBY80pZ1Tg6MpihOC7YtA\"",
-		"mtime": "2026-11-07T22:22:24.539Z",
+		"mtime": "2026-11-07T23:02:05.328Z",
 		"size": 1976,
 		"path": "../public/dna-logo.png"
-	},
-	"/assets/styles-BdUUt61F.css": {
-		"type": "text/css; charset=utf-8",
-		"etag": "\"1411b-AQdhlYcNAoamJugr7gdsBpFrYqI\"",
-		"mtime": "2026-11-07T22:22:24.398Z",
-		"size": 82203,
-		"path": "../public/assets/styles-BdUUt61F.css"
-	},
-	"/audio/call_1.mp3": {
-		"type": "audio/mpeg",
-		"etag": "\"6441e-wsmqOAyZ7HjiI8Yj1Y/OmDWvzZQ\"",
-		"mtime": "2026-11-07T22:22:24.540Z",
-		"size": 410654,
-		"path": "../public/audio/call_1.mp3"
-	},
-	"/assets/index-_Cm3gsbN.js": {
-		"type": "text/javascript; charset=utf-8",
-		"etag": "\"5a51e-IOidnUxQRRRa37VkAR3LktumUAw\"",
-		"mtime": "2026-11-07T22:22:24.398Z",
-		"size": 369950,
-		"path": "../public/assets/index-_Cm3gsbN.js"
-	},
-	"/audio/call_4.mp3": {
-		"type": "audio/mpeg",
-		"etag": "\"6c033-G0dHwVIAZ9mSg2VB7GLi0FzxeSw\"",
-		"mtime": "2026-11-07T22:22:24.540Z",
-		"size": 442419,
-		"path": "../public/audio/call_4.mp3"
 	},
 	"/robots.txt": {
 		"type": "text/plain; charset=utf-8",
 		"etag": "\"a0-CKGXSIe7TSsqDTmGm/nY1t/o5d0\"",
-		"mtime": "2026-11-07T22:22:24.539Z",
+		"mtime": "2026-11-07T23:02:05.328Z",
 		"size": 160,
 		"path": "../public/robots.txt"
 	},
 	"/favicon.ico": {
 		"type": "image/vnd.microsoft.icon",
 		"etag": "\"4f95-3RXc3p2mhEAs1WBwaIvE0Y0uu0Y\"",
-		"mtime": "2026-11-07T22:22:24.539Z",
+		"mtime": "2026-11-07T23:02:05.328Z",
 		"size": 20373,
 		"path": "../public/favicon.ico"
+	},
+	"/audio/call_1.mp3": {
+		"type": "audio/mpeg",
+		"etag": "\"6441e-wsmqOAyZ7HjiI8Yj1Y/OmDWvzZQ\"",
+		"mtime": "2026-11-07T23:02:05.328Z",
+		"size": 410654,
+		"path": "../public/audio/call_1.mp3"
+	},
+	"/audio/call_4.mp3": {
+		"type": "audio/mpeg",
+		"etag": "\"6c033-G0dHwVIAZ9mSg2VB7GLi0FzxeSw\"",
+		"mtime": "2026-11-07T23:02:05.329Z",
+		"size": 442419,
+		"path": "../public/audio/call_4.mp3"
+	},
+	"/assets/index-_Cm3gsbN.js": {
+		"type": "text/javascript; charset=utf-8",
+		"etag": "\"5a51e-IOidnUxQRRRa37VkAR3LktumUAw\"",
+		"mtime": "2026-11-07T23:02:05.192Z",
+		"size": 369950,
+		"path": "../public/assets/index-_Cm3gsbN.js"
+	},
+	"/assets/styles-BdUUt61F.css": {
+		"type": "text/css; charset=utf-8",
+		"etag": "\"1411b-AQdhlYcNAoamJugr7gdsBpFrYqI\"",
+		"mtime": "2026-11-07T23:02:05.194Z",
+		"size": 82203,
+		"path": "../public/assets/styles-BdUUt61F.css"
 	},
 	"/assets/routes-CVJhzHq0.js": {
 		"type": "text/javascript; charset=utf-8",
 		"etag": "\"a5c46-xRMIXfgrIX8r9ROcQHQRbQh0iAY\"",
-		"mtime": "2026-11-07T22:22:24.398Z",
+		"mtime": "2026-11-07T23:02:05.192Z",
 		"size": 678982,
 		"path": "../public/assets/routes-CVJhzHq0.js"
 	}
@@ -168,11 +168,11 @@ var findRouteRules = /* @__PURE__ */ (() => {
 		return r;
 	};
 })();
-var _lazy_eSPTRT = defineLazyEventHandler(() => import("./_chunks/ssr-renderer.mjs"));
+var _lazy_lytTHZ = defineLazyEventHandler(() => import("./_chunks/renderer-template.mjs"));
 var findRoute = /* @__PURE__ */ (() => {
 	const data = {
 		route: "/**",
-		handler: _lazy_eSPTRT
+		handler: _lazy_lytTHZ
 	};
 	return ((_m, p) => {
 		return {

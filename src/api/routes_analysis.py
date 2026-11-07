@@ -163,28 +163,104 @@ def handle_classify_sms(req: Dict[str, Any]) -> Dict[str, Any]:
     except Exception as e:
         logger.warning("classify_message execution failed: %s", e)
 
-    # 2. Strict Link Security Enforcement:
-    # An unexpected or unverified message containing or mentioning a link must never be none or low risk.
-    is_initiated_reset = bool(re.search(r"(?:my\s+password\s+reset|requested\s+password|tilasin\s+salasanan)", body, re.IGNORECASE))
-    if has_link and not is_initiated_reset:
-        if not res or res.get("risk_level") in ("none", "low", "routine"):
-            if res is None:
-                res = {}
-            res["risk_level"] = "medium"
-            res["urgency"] = "today"
-            res["primary_action"] = "verify_via_official_channel"
-            adv = (
-                "Do not open links in unexpected messages. Check the matter in the service's official app or on their own website."
-                if lang == "en" else
-                "Älä avaa linkkiä odottamattomasta viestistä. Tarkista asia palvelun virallisesta sovelluksesta tai omilta verkkosivuilta."
-            )
-            res["advice_text"] = adv
-            res["situation_id"] = "SM-UNVERIFIED-LINK"
+    # 2. Strict Link & Incident Security Enforcement:
+    # A. Active malware or device compromise from a link -> CRITICAL risk (isolate device and scan)
+    has_malware = bool(re.search(
+        r"(?:malware\w*|virus\w*|virukse\w*|trojan\w*|spyware\w*|haittaohjelm\w*|skadlig\w*\s+kod\w*|infected\w*|saastun\w*|tartun\w*|hack\w*)",
+        body,
+        re.IGNORECASE,
+    ))
+    if has_malware and (not res or res.get("risk_level") != "critical"):
+        if res is None:
+            res = {}
+        res["risk_level"] = "critical"
+        res["urgency"] = "immediate"
+        res["primary_action"] = "isolate_device_and_scan"
+        res["situation_id"] = "S07"
+        if lang == "fi":
+            res["advice_text"] = "Älä käytä verkkopankkia tällä laitteella ennen kuin se on tarkistettu. Epäilyttävästä linkistä ladattu ohjelma voi seurata viestejä ja koodeja. Laita laite heti lentotilaan tai katkaise verkkoyhteys. Ota yhteys pankkiisi, jos olet käyttänyt pankkipalveluita laitteella."
             res["steps"] = [
-                "Do not open or click the link in the message.",
-                "Check the matter in the official app or on the organisation's own website.",
-                "Never enter banking codes, passwords, or personal details through external links.",
+                "Älä käytä verkkopankkia tällä laitteella ennen kuin se on tarkistettu.",
+                "Ota heti yhteys pankkiisi ja kerro mitä tapahtui.",
+                "Laita laite lentotilaan tai katkaise verkkoyhteys.",
+                "Poista asennettu ohjelma tai sovellus.",
             ]
+        elif lang == "sv":
+            res["advice_text"] = "Använd inte nätbanken på den enheten förrän den har kontrollerats. Ett program från en länk kan läsa dina meddelanden och koder. Slå på flygplansläge eller koppla från internet omedelbart. Kontakta din bank om du använt banktjänster på enheten."
+            res["steps"] = [
+                "Använd inte nätbanken på den enheten förrän den har kontrollerats.",
+                "Ring din bank omedelbart och berätta vad som hänt.",
+                "Slå på flygplansläge eller koppla från internet.",
+                "Ta bort programmet eller appen som installerades.",
+            ]
+        else:
+            res["advice_text"] = "Do not use online banking on that device until it is checked. An app from a link can read your messages and codes. Call your bank now and tell them what happened. Turn on flight mode or disconnect the device from the internet. Remove the app or program that was installed."
+            res["steps"] = [
+                "Do not use online banking on that device until it is checked.",
+                "Call your bank now and tell them what happened.",
+                "Turn on flight mode or disconnect the device from the internet.",
+                "Remove the app or program that was installed.",
+            ]
+
+    # B. Link security: Unopened SMS with link vs. Post-click chat inquiry
+    is_initiated_reset = bool(re.search(r"(?:my\s+password\s+reset|requested\s+password|tilasin\s+salasanan)", body, re.IGNORECASE))
+    is_chat_or_incident = req.get("mode") in ("chat", "call") or bool(re.search(
+        r"(?:clicked|klikkasin|klickade|opened|avasin|oppnade|downloaded|installed|latasin|asensin|laddade|entered|syotin|skrev\s+in|gave|annoin|shared)",
+        body,
+        re.IGNORECASE,
+    ))
+
+    if has_link and not is_initiated_reset and not has_malware:
+        if not is_chat_or_incident:
+            # Unopened incoming SMS: always warn user not to open unexpected link
+            if not res or res.get("risk_level") in ("none", "low", "routine"):
+                if res is None:
+                    res = {}
+                res["risk_level"] = "medium"
+                res["urgency"] = "today"
+                res["primary_action"] = "verify_via_official_channel"
+                adv = (
+                    "Do not open links in unexpected messages. Check the matter in the service's official app or on their own website."
+                    if lang == "en" else
+                    "Älä avaa linkkiä odottamattomasta viestistä. Tarkista asia palvelun virallisesta sovelluksesta tai omilta verkkosivuilta."
+                )
+                res["advice_text"] = adv
+                res["situation_id"] = "SM-UNVERIFIED-LINK"
+                res["steps"] = [
+                    "Do not open or click the link in the message.",
+                    "Check the matter in the official app or on the organisation's own website.",
+                    "Never enter banking codes, passwords, or personal details through external links.",
+                ]
+        else:
+            # User reports already clicking link in chat: warn about credential/code exposure
+            if not res or res.get("risk_level") in ("none", "low", "routine"):
+                if res is None:
+                    res = {}
+                res["risk_level"] = "medium"
+                res["urgency"] = "today"
+                res["primary_action"] = "verify_via_official_channel"
+                res["situation_id"] = "S03"
+                if lang == "fi":
+                    res["advice_text"] = "Koska avasit linkin, sulje sivu äläkä syötä salasanoja, koodeja tai korttitietoja. Tarkista asia suoraan palvelun virallisesta sovelluksesta tai virallisilta verkkosivuilta. Jos syötit pankkitietoja, ota heti yhteys pankkisi sulkupalveluun."
+                    res["steps"] = [
+                        "Sulje sivu äläkä syötä tunnuksia tai koodeja.",
+                        "Tarkista asia virallisesta sovelluksesta tai viralliselta sivustolta.",
+                        "Jos luovutit pankkitietoja, soita heti pankkisi sulkupalveluun.",
+                    ]
+                elif lang == "sv":
+                    res["advice_text"] = "Eftersom du öppnade länken, stäng sidan och ange inga koder eller lösenord. Kontrollera saken i den officiella appen eller på den officiella webbplatsen. Om du angav bankuppgifter, kontakta bankens spärrtjänst omedelbart."
+                    res["steps"] = [
+                        "Stäng sidan och ange inga lösenord eller koder.",
+                        "Kontrollera ärendet i den officiella appen eller på webbplatsen.",
+                        "Om du lämnat ut bankuppgifter, kontakta bankens spärrtjänst omedelbart.",
+                    ]
+                else:
+                    res["advice_text"] = "Since you clicked the link, close the page and do not enter passwords, security codes, or card details. Check the matter directly in the official app or on the official website. If you entered any codes or passwords, call your bank immediately."
+                    res["steps"] = [
+                        "Close the page and do not enter any codes or passwords.",
+                        "Check the matter in the official app or on the official website.",
+                        "If you entered bank details, call your bank's blocking service immediately.",
+                    ]
 
     if not res:
         # Fallback to BankingValidator and ThreatClassifier
