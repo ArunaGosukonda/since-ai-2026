@@ -2,11 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Demo: Oma DNA Web Dashboard (Port 8080)",
+      "name": "Demo: Oma DNA Web Dashboard (Port 8085)",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/src/application/demo_ui.py",
-      "args": ["--port", "8080"],
+      "args": ["--port", "8085"],
       "console": "integratedTerminal"
     },
     {

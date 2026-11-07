@@ -411,8 +411,8 @@ async function nextTurn() {
       : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
 
     let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
-    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">\uD83D\uDCD6 ${c}</span>`).join("");
-    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">\uD83D\uDD0C ${s}</span>`).join("");
+    let citationsHtml = (ans.citations || []).map(c => `<span class="audit-pill">&#128214; ${c}</span>`).join("");
+    let signalsHtml = (ans.signals_used || []).map(s => `<span class="audit-pill">&#128268; ${s}</span>`).join("");
 
     feed.innerHTML += `
       <div class="msg-row assistant">
@@ -463,12 +463,30 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         # Quiet standard logging
         return
 
+    def _send_html(self, html_str: str, status: int = 200):
+        body = html_str.encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+
+    def _send_json(self, data: Any, status: int = 200):
+        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        self.send_response(status)
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Connection", "close")
+        self.end_headers()
+        self.wfile.write(body)
+
     def do_GET(self):
         if self.path == "/" or self.path == "/index.html":
-            self.send_response(200)
-            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self._send_html(HTML_TEMPLATE)
+        elif self.path == "/favicon.ico":
+            self.send_response(204)
             self.end_headers()
-            self.wfile.write(HTML_TEMPLATE.encode("utf-8"))
         elif self.path == "/api/cases":
             cases_for_client = []
             for c in self.cases_cache:
@@ -476,10 +494,7 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
                 cid = client_c.get("case_id", "")
                 client_c["profile"] = PERSONA_PROFILES.get(cid, {})
                 cases_for_client.append(client_c)
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(cases_for_client, ensure_ascii=False).encode("utf-8"))
+            self._send_json(cases_for_client)
         else:
             self.send_response(404)
             self.end_headers()
@@ -499,10 +514,7 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
             sim = UserSimulator(case)
             self.active_simulators[cid] = sim
             init_state: Dict[str, Any] = {}
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps({"status": "ok", "state": init_state}).encode("utf-8"))
+            self._send_json({"status": "ok", "state": init_state})
 
         elif self.path == "/api/step":
             cid = req.get("case_id")
@@ -553,17 +565,14 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
             elif rtype == "final":
                 resp_data["final_answer"] = reply.get("answer", {})
 
-            self.send_response(200)
-            self.send_header("Content-Type", "application/json; charset=utf-8")
-            self.end_headers()
-            self.wfile.write(json.dumps(resp_data, ensure_ascii=False).encode("utf-8"))
+            self._send_json(resp_data)
 
 
 def main():
     parser = argparse.ArgumentParser(description="Since AI — DNA Digital Security Assistant Interactive Demo")
     parser.add_argument("--cases", default=SAMPLE_CASES_PATH, help="Path to jsonl cases file")
     parser.add_argument("--cli", action="store_true", help="Run interactive/batch demo directly in terminal")
-    parser.add_argument("--port", type=int, default=8080, help="Web server port (default: 8080)")
+    parser.add_argument("--port", type=int, default=8085, help="Web server port (default: 8085)")
     args = parser.parse_args()
 
     cases = load_jsonl(args.cases)
@@ -574,16 +583,31 @@ def main():
         run_cli_demo(cases)
     else:
         DemoHTTPHandler.cases_cache = cases
+        ports_to_try = [args.port, 8085, 8088, 8888, 8080]
+        httpd = None
+        chosen_port = None
+        for p in ports_to_try:
+            try:
+                http.server.ThreadingHTTPServer.allow_reuse_address = True
+                httpd = http.server.ThreadingHTTPServer(("0.0.0.0", p), DemoHTTPHandler)
+                chosen_port = p
+                break
+            except OSError:
+                continue
+
+        if not httpd:
+            sys.exit("Error: Could not bind to any test port (8085, 8088, 8888, 8080).")
+
         print("=" * 70)
         print("  SINCE AI — DNA DIGITAL SECURITY ASSISTANT")
-        print(f"  Live Interactive Oma DNA Dashboard running at: http://localhost:{args.port}")
+        print(f"  Live Interactive Oma DNA Dashboard is running!")
+        print(f"  👉 Open URL in your browser:  http://localhost:{chosen_port}")
         print("  Press Ctrl+C to stop.")
         print("=" * 70)
-        with socketserver.TCPServer(("", args.port), DemoHTTPHandler) as httpd:
-            try:
-                httpd.serve_forever()
-            except KeyboardInterrupt:
-                print("\nShutting down server.")
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nShutting down server.")
 
 
 if __name__ == "__main__":
