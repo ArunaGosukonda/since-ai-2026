@@ -1,0 +1,33 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Validate All Submissions (Schema Check)",
+      "type": "shell",
+      "command": "python3 tools/validate.py --submission test_predictions.jsonl --cases data/test/inputs.jsonl && python3 tools/validate.py --submission mt_predictions.jsonl --cases data/dev/cases.jsonl && python3 tools/validate.py --submission dev_predictions.jsonl --cases data/dev/cases.jsonl",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "Run Multi-Turn Evaluation Harness",
+      "type": "shell",
+      "command": "python3 eval/evaluate.py --cases data/dev/cases.jsonl --submission mt_predictions.jsonl",
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "Run 27 Red-Team Security Tests",
+      "type": "shell",
+      "command": "python3 -m unittest tests/security/test_red_team.py",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "new" }
+    },
+    {
+      "label": "Run All Unit & Integration Tests",
+      "type": "shell",
+      "command": "python3 -m unittest discover -s tests",
+      "group": "test",
+      "presentation": { "reveal": "always", "panel": "new" }
+    }
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Demo: Oma DNA Web Dashboard (Port 8080)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/application/demo_ui.py",
+      "args": ["--port", "8080"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Demo: Terminal CLI Mode",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/src/application/demo_ui.py",
+      "args": ["--cli"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Security: Red Team Suite (27 Attacks)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "-m",
+      "args": ["unittest", "tests/security/test_red_team.py"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "Eval: Multi-Turn Benchmark (588 Dev Cases)",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/eval/evaluate.py",
+      "args": ["--cases", "data/dev/cases.jsonl", "--submission", "mt_predictions.jsonl"],
+      "console": "integratedTerminal"
+    }
+  ]
+}
