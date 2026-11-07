@@ -41,3 +41,6 @@ dist/
 build/
 *.egg-info/
 .gcp-github-deployer-key.json
+frontend/node_modules/
+node_modules/
+frontend_backup/

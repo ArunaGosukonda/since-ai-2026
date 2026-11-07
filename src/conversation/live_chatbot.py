@@ -470,6 +470,18 @@ class LiveChatbot:
         # Final action resolution
         rec = self.selector.decide(ctx, active_facts, mode="multi_turn")
 
+        # Detect link presence or link mentions in the message
+        has_link_mention = bool(links) or bool(re.search(
+            r"\b(link|linkki|länk|url|linkin|linkistä|linkkiä|linkkini|website|sivusto|osoite)\b",
+            opening_text,
+            re.IGNORECASE,
+        ))
+        is_initiated_reset = bool(re.search(
+            r"(?:password\s*reset|salasanan\s*palautus|reset\s*link|palautuslinkki|resetointi)",
+            opening_text,
+            re.IGNORECASE,
+        ))
+
         # ML Threat Classifier assessment
         try:
             ml_res = self.classifier.assess(
@@ -479,7 +491,7 @@ class LiveChatbot:
                 language=lang,
                 audience=audience,
             )
-            if ml_res.get("tri_state_verdict") == "BENIGN":
+            if ml_res.get("tri_state_verdict") == "BENIGN" and not (has_link_mention and not is_initiated_reset):
                 is_benign = True
                 if ml_res.get("action") == "no_action_needed":
                     rec.primary_action = "no_action_needed"
@@ -488,27 +500,83 @@ class LiveChatbot:
             logger.warning("ThreatClassifier evaluation encountered: %s", ml_err)
             ml_res = {}
 
-        advice_text_primary, steps_primary, _, _ = generate_response(
-            ctx=ctx,
-            action=rec.primary_action,
-            required_steps=rec.required_steps,
-            decisive_question=None,
-            escalation_required=rec.escalation_required,
-            escalation_target=rec.escalation_target,
-        )
+        # Strict Link Security Enforcement:
+        # A link in an unexpected or unverified message must always trigger a warning (MEDIUM RISK), never NO ACTION NEEDED
+        if has_link_mention and not is_initiated_reset:
+            is_benign = False
+            rec.primary_action = "verify_via_official_channel"
+            rec.risk_level = "medium"
+            rec.urgency = "today"
+            rec.required_steps = ["dont_open_link", "verify_official_channel"]
+            outcome = "INCONCLUSIVE"
+            if lang == "fi":
+                advice_text_primary = (
+                    "Älä avaa linkkiä odottamattomasta viestistä. Linkit voivat johtaa väärennetyille "
+                    "kirjautumissivuille, joilla kalastellaan henkilötietoja tai pankkitunnuksia. "
+                    "Jos viesti väittää olevansa pankista tai tunnetulta organisaatiolta, tarkista asia "
+                    "virallisesta sovelluksesta tai organisaation omilta verkkosivuilta."
+                )
+                steps_primary = [
+                    "Älä avaa linkkiä äläkä kirjaudu sen kautta.",
+                    "Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta.",
+                    "Älä koskaan luovuta koodeja tai salasanoja ulkoisten linkkien kautta.",
+                ]
+            elif lang == "sv":
+                advice_text_primary = (
+                    "Öppna inte länkar i oväntade meddelanden. Länkar kan leda till falska "
+                    "inloggningssidor som försöker stjäla bankuppgifter eller personlig information. "
+                    "Kontrollera alltid saken i den officiella appen eller på organisationens egen webbplats."
+                )
+                steps_primary = [
+                    "Öppna inte länken och logga inte in via den.",
+                    "Kontrollera saken i den officiella appen eller på organisationens egen webbplats.",
+                    "Dela aldrig koder eller lösenord via externa länkar.",
+                ]
+            else:
+                advice_text_primary = (
+                    "Do not open links in unexpected messages. Links can lead to fake login pages "
+                    "designed to steal personal details or bank access. If this message claims to be "
+                    "from your bank or an organisation, check the matter directly in their official app "
+                    "or on their official website instead of tapping the link."
+                )
+                steps_primary = [
+                    "Do not open or click the link in the message.",
+                    "Check the matter in the official app or on the organisation's own website.",
+                    "Never enter banking codes, passwords, or personal details through external links.",
+                ]
+            advice_text_en = (
+                "Do not open links in unexpected messages. Links can lead to fake login pages "
+                "designed to steal personal details or bank access. If this message claims to be "
+                "from your bank or an organisation, check the matter directly in their official app "
+                "or on their official website instead of tapping the link."
+            )
+            steps_en = [
+                "Do not open or click the link in the message.",
+                "Check the matter in the official app or on the organisation's own website.",
+                "Never enter banking codes, passwords, or personal details through external links.",
+            ]
+        else:
+            advice_text_primary, steps_primary, _, _ = generate_response(
+                ctx=ctx,
+                action=rec.primary_action,
+                required_steps=rec.required_steps,
+                decisive_question=None,
+                escalation_required=rec.escalation_required,
+                escalation_target=rec.escalation_target,
+            )
 
-        ctx_en = copy.deepcopy(ctx)
-        ctx_en.language = "en"
-        advice_text_en, steps_en, _, _ = generate_response(
-            ctx=ctx_en,
-            action=rec.primary_action,
-            required_steps=rec.required_steps,
-            decisive_question=None,
-            escalation_required=rec.escalation_required,
-            escalation_target=rec.escalation_target,
-        )
+            ctx_en = copy.deepcopy(ctx)
+            ctx_en.language = "en"
+            advice_text_en, steps_en, _, _ = generate_response(
+                ctx=ctx_en,
+                action=rec.primary_action,
+                required_steps=rec.required_steps,
+                decisive_question=None,
+                escalation_required=rec.escalation_required,
+                escalation_target=rec.escalation_target,
+            )
 
-        outcome = "BENIGN" if is_benign else "SUSPICIOUS_OR_MALICIOUS"
+            outcome = "BENIGN" if is_benign else "SUSPICIOUS_OR_MALICIOUS"
 
         candidate = {
             "case_id": session_id,

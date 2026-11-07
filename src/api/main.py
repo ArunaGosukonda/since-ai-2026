@@ -15,6 +15,10 @@ from src.api.routes_chat import (
     handle_create_session,
     handle_health_check,
 )
+from src.api.routes_analysis import (
+    handle_analyze_request,
+    handle_classify_sms,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +57,17 @@ try:
         payload = await request.json()
         return handle_chat_message(payload)
 
+    @app.post("/api/v1/analyze")
+    async def analyze(request: Request):
+        payload = await request.json()
+        return handle_analyze_request(payload)
+
+    @app.post("/api/classify")
+    @app.post("/api/v1/classify")
+    async def classify(request: Request):
+        payload = await request.json()
+        return handle_classify_sms(payload)
+
     @app.post("/api/v1/consent")
     async def consent(request: Request):
         payload = await request.json()
@@ -66,11 +81,63 @@ try:
             return FileResponse(demo_path)
         return JSONResponse({"error": "demo not found"}, status_code=404)
 
-    # Mount static frontend assets (serves index.html on root /)
-    frontend_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend"))
-    if os.path.exists(frontend_dir):
+    # Mount static frontend assets from .output/public
+    public_dir = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../frontend/.output/public"))
+    if os.path.exists(public_dir):
         from fastapi.staticfiles import StaticFiles
-        app.mount("/", StaticFiles(directory=frontend_dir, html=True), name="frontend")
+        assets_dir = os.path.join(public_dir, "assets")
+        if os.path.exists(assets_dir):
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+        audio_dir = os.path.join(public_dir, "audio")
+        if os.path.exists(audio_dir):
+            app.mount("/audio", StaticFiles(directory=audio_dir), name="audio")
+
+    import urllib.request
+    import urllib.error
+
+    @app.api_route("/{full_path:path}", methods=["GET", "POST", "HEAD", "OPTIONS"])
+    async def proxy_ssr_frontend(request: Request, full_path: str):
+        if full_path and os.path.exists(public_dir):
+            static_file = os.path.join(public_dir, full_path)
+            if os.path.isfile(static_file):
+                return FileResponse(static_file)
+        target_url = f"http://127.0.0.1:3000/{full_path}"
+        if request.url.query:
+            target_url += f"?{request.url.query}"
+        req_body = await request.body()
+        req_headers = {
+            k: v for k, v in request.headers.items()
+            if k.lower() not in ("host", "content-length", "connection")
+        }
+        py_req = urllib.request.Request(
+            target_url,
+            data=req_body if req_body else None,
+            headers=req_headers,
+            method=request.method,
+        )
+        try:
+            with urllib.request.urlopen(py_req, timeout=10) as resp:
+                content = resp.read()
+                resp_headers = {
+                    k: v for k, v in resp.headers.items()
+                    if k.lower() not in ("transfer-encoding", "content-encoding", "connection")
+                }
+                from fastapi import Response
+                return Response(
+                    content=content,
+                    status_code=resp.status,
+                    headers=resp_headers,
+                )
+        except urllib.error.HTTPError as e:
+            content = e.read()
+            from fastapi import Response
+            return Response(content=content, status_code=e.code)
+        except Exception as e:
+            # Fallback to demo.html if SSR server is starting or unavailable
+            demo_path = os.path.normpath(os.path.join(os.path.dirname(__file__), "../../demo.html"))
+            if os.path.exists(demo_path) and full_path == "":
+                return FileResponse(demo_path)
+            return JSONResponse({"error": "frontend_ssr_unavailable", "detail": str(e)}, status_code=502)
 
 except ImportError:
     app = None
@@ -118,6 +185,12 @@ class SinceAIHttpHandler(SimpleHTTPRequestHandler):
 
         if self.path == "/api/v1/chat":
             result = handle_chat_message(payload)
+            self._send_json(200, result)
+        elif self.path == "/api/v1/analyze":
+            result = handle_analyze_request(payload)
+            self._send_json(200, result)
+        elif self.path in ("/api/classify", "/api/v1/classify"):
+            result = handle_classify_sms(payload)
             self._send_json(200, result)
         elif self.path == "/api/v1/sessions":
             result = handle_create_session(payload)

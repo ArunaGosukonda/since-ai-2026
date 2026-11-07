@@ -26,5 +26,13 @@ except Exception as e:
     print('Knowledge check notice:', e)
 " || true
 
+# Start TanStack Start SSR Node server in background if present
+if [ -f "/app/frontend/.output/server/index.mjs" ]; then
+    echo "Starting TanStack Start Node SSR server on port 3000..."
+    PORT=3000 node /app/frontend/.output/server/index.mjs &
+else
+    echo "Notice: /app/frontend/.output/server/index.mjs not found; SSR server skipped."
+fi
+
 echo "Starting Uvicorn HTTP server..."
 exec uvicorn src.api.main:app --host 0.0.0.0 --port "${PORT:-8080}"

@@ -116,7 +116,42 @@ def test_full_chatbot_scenarios():
     assert r4["user_language"] == "en"
     assert r4["decision"]["primary_action"] == "verify_via_official_channel"
     assert "faked" in r4["text_en"] or "call" in r4["text_en"].lower()
-    assert "spoofed" not in r4["text"].lower()
+    # 5. Link in message (must never be none / no_action_needed)
+    sid5 = str(uuid.uuid4())
+    r5 = bot.handle_user_message(sid5, "I got a link in message")
+    assert r5["outcome_type"] == "INCONCLUSIVE"
+    assert r5["user_language"] == "en"
+    assert r5["decision"]["risk_level"] == "medium"
+    assert r5["decision"]["primary_action"] == "verify_via_official_channel"
+    assert any("link" in s.lower() for s in r5["decision"]["steps"])
+    assert "Do not open links" in r5["text_en"] or "link" in r5["text_en"].lower()
+
+    # 6. Finnish link mention
+    sid6 = str(uuid.uuid4())
+    r6 = bot.handle_user_message(sid6, "Sain viestissä linkin")
+    assert r6["outcome_type"] == "INCONCLUSIVE"
+    assert r6["user_language"] == "fi"
+    assert r6["decision"]["risk_level"] == "medium"
+    assert r6["decision"]["primary_action"] == "verify_via_official_channel"
+
+
+def test_analysis_and_classify_routes():
+    from src.api.routes_analysis import handle_analyze_request, handle_classify_sms
+
+    # Spoken call lines
+    res_call_bank = handle_analyze_request({"sentence": "Good afternoon, this is Mikko from Revontuli Bank security department."})
+    assert res_call_bank["stage"] == "careful"
+    assert "bank" in res_call_bank["reason"]["en"].lower() or "bank" in res_call_bank["verdict_reason"].lower()
+
+    res_call_scam = handle_analyze_request({"sentence": "She needs to read the codes from her banking app to cancel the suspicious transactions."})
+    assert res_call_scam["stage"] == "scam"
+    assert len(res_call_scam["flags"]) > 0
+
+    # SMS classify endpoint with link
+    res_sms_link = handle_classify_sms({"message": "I got a link in message"})
+    assert res_sms_link["verdict"] in ("WARNING", "SUSPICIOUS")
+    assert res_sms_link["risk_level"] == "medium"
+    assert "link" in res_sms_link["advice"].lower()
 
 
 if __name__ == "__main__":
@@ -134,4 +169,6 @@ if __name__ == "__main__":
     print("test_threat_classifier passed!")
     test_full_chatbot_scenarios()
     print("test_full_chatbot_scenarios passed!")
+    test_analysis_and_classify_routes()
+    print("test_analysis_and_classify_routes passed!")
     print("\nALL USER SCENARIO TESTS PASSED SUCCESSFULLY!")

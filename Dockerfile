@@ -22,10 +22,11 @@ FROM python:3.12-slim AS runner
 
 WORKDIR /app
 
-# Install minimal runtime libraries for PostgreSQL and healthchecks
+# Install minimal runtime libraries for PostgreSQL, healthchecks, and Node.js
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
     curl \
+    nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy installed virtualenv from builder with global read/exec permissions

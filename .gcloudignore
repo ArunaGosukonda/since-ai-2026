@@ -15,3 +15,5 @@ mt_sample.jsonl
 *.sqlite
 *.sqlite3
 .DS_Store
+frontend/node_modules/
+frontend_backup/
