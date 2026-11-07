@@ -164,158 +164,43 @@ function selectCase(index) {
   resetCurrentCase();
 }
 
-
-let mtData = {
-  "DSA-D-0056": [
-    {
-      reply_type: "final",
-      final_answer: {
-        advice_text: "Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu. Tarkista asia virallisesta sovelluksesta tai soita organisaation omalle tutulle numerolle. Huijarit voivat väärentää lähettäjän nimen näkymään aidossa ketjussa.",
-        primary_action: "verify_via_official_channel",
-        risk_level: "high",
-        urgency: "today",
-        escalation_required: false,
-        escalation_target: null,
-        steps: ["Älä avaa linkkiä äläkä kirjaudu sen kautta.", "Tarkista asia virallisesta sovelluksesta tai organisaation omilta verkkosivuilta."],
-        signals_used: ["artifact", "link_check"],
-        citations: ["guidance_bank_verification"]
-      }
-    }
-  ],
-  "DSA-D-0105": [
-    {
-      reply_type: "consent_request",
-      reply_text: "Saanko tarkistaa laitteelle äskettäin asennetut sovellukset mahdollisen haittaohjelman varalta?",
-      sim_user_text: "Joo, saat katsoa."
-    },
-    {
-      reply_type: "final",
-      final_answer: {
-        advice_text: "Katkaise laitteen verkkoyhteys heti laittamalla se lentotilaan äläkä käytä sillä verkkopankkia. Poista epäilyttävä sovellus ja tarkistuta laite asiantuntijalla. Yhdistän sinut asiakaspalveluumme tilanteen hoitamiseksi.",
-        primary_action: "isolate_device_and_scan",
-        risk_level: "critical",
-        urgency: "immediate",
-        escalation_required: true,
-        escalation_target: "security_specialist",
-        steps: [
-          "Katkaise laitteen verkkoyhteys heti laittamalla se lentotilaan.",
-          "Älä käytä laitetta verkkopankkiin ennen kuin se on tarkistettu.",
-          "Poista epäilyttävä sovellus ja hallintaprofiili laitteen asetuksista.",
-          "Ota heti yhteyttä pankkiisi kortin kääntöpuolella olevaan numeroon."
-        ],
-        signals_used: ["artifact", "device.recent_app_installs", "link_check"],
-        citations: ["guidance_malicious_app", "guidance_device_compromise"]
-      }
-    }
-  ],
-  "DSA-D-0160": [
-    {
-      reply_type: "consent_request",
-      reply_text: "Saanko tarkistaa liittymäsi viimeaikaiset tapahtumat selvittääkseni mahdolliset SIM-kortin muutokset?",
-      sim_user_text: "Joo, saat katsoa."
-    },
-    {
-      reply_type: "question",
-      reply_text: "Kerroitko soittajalle jonkin koodin?",
-      sim_user_text: "Luin koodin hänelle ennen kuin aloin epäillä."
-    },
-    {
-      reply_type: "final",
-      final_answer: {
-        advice_text: "Ota heti yhteyttä operaattorin asiakaspalveluun ja pyydä lukitsemaan liittymä. Tämä voi olla yritys siirtää puhelinnumerosi toiseen laitteeseen. Älä koskaan luovuta saamaasi vahvistuskoodia kenellekään. Yhdistän sinut asiakaspalveluumme tilanteen hoitamiseksi.",
-        primary_action: "contact_operator_support",
-        risk_level: "critical",
-        urgency: "immediate",
-        escalation_required: true,
-        escalation_target: "operator_support_agent",
-        steps: [
-          "Ota heti yhteyttä operaattorin asiakaspalveluun.",
-          "Pyydä operaattoria lukitsemaan liittymä ja estämään SIM-muutokset."
-        ],
-        signals_used: ["artifact", "call_warning", "subscription.recent_events"],
-        citations: ["guidance_sim_swap", "guidance_handing_off"]
-      }
-    }
-  ],
-  "DSA-D-0337": [
-    {
-      reply_type: "consent_request",
-      reply_text: "Saanko tarkistaa liittymäsi viimeaikaiset tapahtumat selvittääkseni mahdolliset SIM-kortin muutokset?",
-      sim_user_text: "Joo, saat katsoa."
-    },
-    {
-      reply_type: "question",
-      reply_text: "Tilasitko tai teitkö tämän muutoksen itse?",
-      sim_user_text: "En ole tilannut mitään eSIMiä enkä vaihtanut puhelinta."
-    },
-    {
-      reply_type: "final",
-      final_answer: {
-        advice_text: "Ota heti yhteyttä operaattorin asiakaspalveluun ja pyydä lukitsemaan liittymä. Tämä voi olla yritys siirtää puhelinnumerosi toiseen laitteeseen. Älä koskaan luovuta saamaasi vahvistuskoodia kenellekään. Yhdistän sinut asiakaspalveluumme tilanteen hoitamiseksi.",
-        primary_action: "contact_operator_support",
-        risk_level: "critical",
-        urgency: "immediate",
-        escalation_required: true,
-        escalation_target: "operator_support_agent",
-        steps: [
-          "Ota heti yhteyttä operaattorin asiakaspalveluun.",
-          "Pyydä operaattoria lukitsemaan liittymä ja estämään SIM-muutokset."
-        ],
-        signals_used: ["artifact", "subscription.recent_events"],
-        citations: ["guidance_sim_swap", "guidance_handing_off"]
-      }
-    }
-  ],
-  "DSA-D-0018": [
-    {
-      reply_type: "final",
-      final_answer: {
-        advice_text: "Älä avaa linkkiä äläkä siirrä rahaa ennen kuin asia on varmistettu. Tarkista asia virallisesta sovelluksesta tai soita organisaation omalle tutulle numerolle. Huijarit voivat väärentää lähettäjän nimen näkymään aidossa ketjussa.",
-        primary_action: "verify_via_official_channel",
-        risk_level: "high",
-        urgency: "today",
-        escalation_required: false,
-        escalation_target: null,
-        steps: [
-          "Älä maksa tai siirrä rahaa ennen kuin asia on varmistettu.",
-          "Soita lähettäjälle numeroon, jonka tiedät jo entuudestaan."
-        ],
-        signals_used: ["artifact"],
-        citations: ["guidance_invoice_fraud", "guidance_payment_verification"]
-      }
-    }
-  ]
-};
-
-let stepIndices = {};
 async function resetCurrentCase() {
   const c = casesData[currentIndex];
   isFinished = false;
-  stepIndices[c.case_id] = 0;
   document.getElementById("btnNext").disabled = false;
-  document.getElementById("btnNext").innerText = "Advance Next Turn \u2192";
+  document.getElementById("btnNext").innerText = "Advance Next Turn →";
   
+  // Update persona banner
   const prof = c.profile || {};
   document.getElementById("personaName").innerText = `${prof.name} — ${prof.role}`;
   document.getElementById("personaStory").innerText = prof.story;
   document.getElementById("avatarText").innerText = (prof.name || "U")[0];
   
+  // Render Telemetry
   const pills = document.getElementById("telemetryPills");
   pills.innerHTML = "";
   const dev = c.signals?.device?.summary || {};
   const sub = c.signals?.subscription?.network_status?.service || "normal";
   const linkVerdict = c.signals?.link_check?.verdict;
   
-  pills.innerHTML += `<div class="pill">OS: ${dev.platform || "unknown"} (${dev.os_version || "n/a"})</div>`;
+  pills.innerHTML += `<div class="pill">OS: ${dev.platform || 'unknown'} (${dev.os_version || 'n/a'})</div>`;
   if (sub === "no_service") {
-    pills.innerHTML += `<div class="pill alert">\u26A0 No Service</div>`;
+    pills.innerHTML += `<div class="pill alert">⚠ No Service</div>`;
   } else {
     pills.innerHTML += `<div class="pill safe">Network: ${sub}</div>`;
   }
   if (linkVerdict === "malicious") {
-    pills.innerHTML += `<div class="pill alert">\u26A0 Malicious Link</div>`;
+    pills.innerHTML += `<div class="pill alert">⚠ Malicious Link</div>`;
   }
   
+  // Reset server state
+  await fetch("/api/reset", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({case_id: c.case_id})
+  });
+  
+  // Render opening message
   const feed = document.getElementById("chatFeed");
   feed.innerHTML = `
     <div class="msg-row user">
@@ -327,12 +212,13 @@ async function resetCurrentCase() {
 async function nextTurn() {
   if (isFinished) return;
   const c = casesData[currentIndex];
-  const turns = mtData[c.case_id] || [];
-  const sIdx = stepIndices[c.case_id] || 0;
-  if (sIdx >= turns.length) return;
+  const resp = await fetch("/api/step", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({case_id: c.case_id})
+  });
+  const data = await resp.json();
   
-  const data = turns[sIdx];
-  stepIndices[c.case_id] = sIdx + 1;
   const feed = document.getElementById("chatFeed");
   
   if (data.reply_type === "consent_request") {
@@ -367,7 +253,7 @@ async function nextTurn() {
     const risk = ans.risk_level || "medium";
     
     let escHtml = ans.escalation_required 
-      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required \u2192 ${ans.escalation_target}</span>`
+      ? `<span style="color: #DC2626; font-weight: 700;">Handoff Required → ${ans.escalation_target}</span>`
       : `<span style="color: #16A34A; font-weight: 600;">Autonomous Resolution</span>`;
 
     let stepsHtml = (ans.steps || []).map(s => `<li>${escapeHtml(s)}</li>`).join("");
@@ -398,6 +284,7 @@ async function nextTurn() {
       </div>
     `;
   }
+  
   feed.scrollTop = feed.scrollHeight;
 }
 

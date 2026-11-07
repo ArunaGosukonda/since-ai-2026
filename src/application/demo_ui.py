@@ -345,13 +345,11 @@ async function resetCurrentCase() {
   }
   
   // Reset server state
-  const resp = await fetch("/api/reset", {
+  await fetch("/api/reset", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
     body: JSON.stringify({case_id: c.case_id})
   });
-  const data = await resp.json();
-  convState = data.state;
   
   // Render opening message
   const feed = document.getElementById("chatFeed");
@@ -368,10 +366,9 @@ async function nextTurn() {
   const resp = await fetch("/api/step", {
     method: "POST",
     headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({case_id: c.case_id, state: convState})
+    body: JSON.stringify({case_id: c.case_id})
   });
   const data = await resp.json();
-  convState = data.state;
   
   const feed = document.getElementById("chatFeed");
   
@@ -458,6 +455,8 @@ loadCases();
 class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
     cases_cache: List[Dict[str, Any]] = []
     active_simulators: Dict[str, UserSimulator] = {}
+    active_states: Dict[str, Dict[str, Any]] = {}
+    active_events: Dict[str, Dict[str, Any]] = {}
 
     def log_message(self, format, *args):
         # Quiet standard logging
@@ -473,7 +472,11 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _send_json(self, data: Any, status: int = 200):
-        body = json.dumps(data, ensure_ascii=False).encode("utf-8")
+        body = json.dumps(
+            data,
+            ensure_ascii=False,
+            default=lambda o: list(o) if isinstance(o, (set, tuple)) else str(o)
+        ).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
@@ -504,54 +507,52 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
         body = self.rfile.read(length).decode("utf-8")
         req = json.loads(body) if body else {}
 
+        cid = req.get("case_id")
+        case = next((c for c in self.cases_cache if c["case_id"] == cid), None)
+        if not case:
+            self.send_response(404)
+            self.end_headers()
+            return
+
         if self.path == "/api/reset":
-            cid = req.get("case_id")
-            case = next((c for c in self.cases_cache if c["case_id"] == cid), None)
-            if not case:
-                self.send_response(404)
-                self.end_headers()
-                return
             sim = UserSimulator(case)
             self.active_simulators[cid] = sim
-            init_state: Dict[str, Any] = {}
-            self._send_json({"status": "ok", "state": init_state})
+            self.active_states[cid] = {}
+            self.active_events[cid] = {
+                "type": "start",
+                "conversation_id": cid,
+                "case": visible_case(case),
+                "max_assistant_turns": 6
+            }
+            self._send_json({"status": "ok"})
 
         elif self.path == "/api/step":
-            cid = req.get("case_id")
-            state = req.get("state", {})
-            case = next((c for c in self.cases_cache if c["case_id"] == cid), None)
-            sim = self.active_simulators.get(cid)
-            if not case or not sim:
-                self.send_response(404)
-                self.end_headers()
-                return
-
-            # Determine appropriate event
-            if "case" not in state:
-                event = {
+            if cid not in self.active_simulators or cid not in self.active_events:
+                self.active_simulators[cid] = UserSimulator(case)
+                self.active_states[cid] = {}
+                self.active_events[cid] = {
                     "type": "start",
                     "conversation_id": cid,
                     "case": visible_case(case),
                     "max_assistant_turns": 6
                 }
-            elif state.get("_pending_event"):
-                event = state.pop("_pending_event")
-            else:
-                event = {"type": "turn_limit"}
+
+            sim = self.active_simulators[cid]
+            state = self.active_states[cid]
+            event = self.active_events[cid]
 
             reply = bot_step(event, state)
             rtype = reply.get("type")
 
-            resp_data: Dict[str, Any] = {
+            resp_data = {
                 "reply_type": rtype,
-                "reply_text": reply.get("text", ""),
-                "state": state
+                "reply_text": reply.get("text", "")
             }
 
             if rtype == "consent_request":
                 c = sim.consent(reply.get("fields", []))
                 resp_data["sim_user_text"] = c["text"]
-                state["_pending_event"] = {
+                self.active_events[cid] = {
                     "type": "consent_reply",
                     "granted": c["granted"],
                     "refused": c["refused"],
@@ -561,11 +562,22 @@ class DemoHTTPHandler(http.server.BaseHTTPRequestHandler):
             elif rtype == "question":
                 ans = sim.answer(reply.get("text", ""), reply.get("topics"))
                 resp_data["sim_user_text"] = ans
-                state["_pending_event"] = {"type": "user_reply", "text": ans}
+                self.active_events[cid] = {"type": "user_reply", "text": ans}
             elif rtype == "final":
                 resp_data["final_answer"] = reply.get("answer", {})
+                # Reset for next run
+                self.active_events[cid] = {
+                    "type": "start",
+                    "conversation_id": cid,
+                    "case": visible_case(case),
+                    "max_assistant_turns": 6
+                }
+                self.active_states[cid] = {}
 
             self._send_json(resp_data)
+        else:
+            self.send_response(404)
+            self.end_headers()
 
 
 def main():
