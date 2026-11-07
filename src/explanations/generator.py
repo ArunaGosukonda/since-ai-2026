@@ -229,7 +229,15 @@ def generate_response(
     lang = ctx.language if ctx.language in ("fi", "en", "sv") else "fi"
     
     # 1. Base explanation text
-    advice_text = EXPLANATIONS.get(action, EXPLANATIONS["verify_via_official_channel"])[lang]
+    if action == "do_not_interact_and_delete" and ctx.journey == "clicked_link":
+        if lang == "fi":
+            advice_text = "Hyvä, että suljit sivun. Pelkkä sivun avaaminen ja sulkeminen ilman tietojen syöttämistä aiheuttaa harvoin vahinkoa, joten korttia ei tarvitse sulkea. Poista viesti laitteestasi äläkä avaa linkkiä uudelleen."
+        elif lang == "sv":
+            advice_text = "Bra att du stängde sidan. Att bara öppna och stänga en sida utan att skriva in något orsakar sällan skada, så du behöver inte spärra kortet. Radera meddelandet från enheten och öppna inte länken igen."
+        else:
+            advice_text = "Good that you closed the page. Just opening and closing a page without typing anything rarely causes harm, so there is no need to block your card. Delete the message from your device and do not open the link again."
+    else:
+        advice_text = EXPLANATIONS.get(action, EXPLANATIONS["verify_via_official_channel"])[lang]
     
     # 2. Add question if decisive question is needed
     questions_asked = []

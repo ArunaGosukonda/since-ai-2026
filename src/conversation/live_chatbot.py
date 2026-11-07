@@ -38,7 +38,7 @@ def _detect_journey(text: str) -> str:
     t = text.lower()
     if matches_any(t, [r"soitti|puhelu|soittaja|called|caller|phone call|ringde|samtal"]):
         return "suspicious_call"
-    if matches_any(t, [r"latasin|asensin|apk|installed|downloaded|klikkasin|avasin link|klickade"]):
+    if matches_any(t, [r"latasin|asensin|apk|installed|downloaded|klikkasin|avasin.*link|klickade|clicked|opened.*link|clicked.*link|open.*link|laddade ner|virus|malware|takeover|take over|trojan|hacked|kaapattu|saastunut|tartunta|infektoitunut"]):
         return "clicked_link"
     if matches_any(t, [r"ei kenttää|no service|esim|kirjautumi|login notice|password reset|tuntematon kirjautu"]):
         return "breach_notice"

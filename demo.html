@@ -488,6 +488,57 @@ function evaluateClientSide(msg) {
     }
   }
 
+  // Virus, malware, device takeover, or compromised phone
+  if (/virus|malware|takeover|take over|trojan|hacked|kaapattu|saastunut|tartunta|infektoitunut|ready for take over|sekoilee/.test(t)) {
+    return {
+      reply_type: "final",
+      user_language: lang,
+      text: lang === "sv"
+        ? "Koppla bort enheten från nätverket omedelbart med flygläge och använd inte internetbanken på den. Ta bort den misstänkta appen och låt en expert kontrollera enheten. Jag kopplar dig till kundservice för att hantera ärendet."
+        : lang === "fi"
+        ? "Katkaise laitteen verkkoyhteys heti laittamalla se lentotilaan äläkä käytä sillä verkkopankkia. Poista epäilyttävä sovellus ja tarkistuta laite asiantuntijalla. Yhdistän sinut asiakaspalveluumme tilanteen hoitamiseksi."
+        : "Disconnect the device from the network immediately using flight mode and do not use banking on it. Remove the suspicious app and get the device checked by a specialist. I am connecting you to our support specialist to handle this.",
+      text_en: "Disconnect the device from the network immediately using flight mode and do not use banking on it. Remove the suspicious app and get the device checked by a specialist. I am connecting you to our support specialist to handle this.",
+      steps_primary: lang === "sv"
+        ? [
+            "Koppla bort enheten från nätverket omedelbart med flygläge.",
+            "Använd inte internetbanken på enheten förrän den har kontrollerats.",
+            "Ta bort den misstänkta appen eller profilen i enhetens inställningar.",
+            "Låt en expert kontrollera enheten eller kör en säkerhetsskanning.",
+            "Kontakta din bank omedelbart på numret på baksidan av kortet."
+          ]
+        : lang === "fi"
+        ? [
+            "Katkaise laitteen verkkoyhteys heti laittamalla se lentotilaan.",
+            "Älä käytä laitetta verkkopankkiin ennen kuin se on tarkistettu.",
+            "Poista epäilyttävä sovellus ja hallintaprofiili laitteen asetuksista.",
+            "Tarkistuta laite asiantuntijalla tai aja virustarkistus.",
+            "Ota heti yhteyttä pankkiisi kortin kääntöpuolella olevaan numeroon."
+          ]
+        : [
+            "Disconnect the device from the network immediately using flight mode.",
+            "Do not use banking or logins on the device until it is checked.",
+            "Remove the suspicious app or management profile in device settings.",
+            "Get the device checked by a specialist or run a security scan.",
+            "Contact your bank immediately on the number on the back of your card."
+          ],
+      steps_en: [
+        "Disconnect the device from the network immediately using flight mode.",
+        "Do not use banking or logins on the device until it is checked.",
+        "Remove the suspicious app or management profile in device settings.",
+        "Get the device checked by a specialist or run a security scan.",
+        "Contact your bank immediately on the number on the back of your card."
+      ],
+      decision: {
+        primary_action: "isolate_device_and_scan",
+        risk_level: "critical",
+        urgency: "immediate",
+        escalation_required: true,
+        escalation_target: "security_specialist"
+      }
+    };
+  }
+
   // Operator call or asking for code -> decisive question
   if (/operaattor|operator|operatör|koodi|code|kod/.test(t) && /soitti|call|ringde|pyysi|bad om/.test(t)) {
     sessionState.pendingQuestion = "code_shared";
@@ -647,7 +698,6 @@ function renderAssistantResponse(data) {
             ⚠️ Decisive Clarification Needed to Complete Journey
           </div>
           ${cardContent}
-          ${ragHtml}
         </div>
       </div>
     `;
@@ -710,8 +760,6 @@ function renderAssistantResponse(data) {
               <strong>Specialist Escalation:</strong> ${escHtml}
             </div>
           </div>
-
-          ${ragHtml}
         </div>
       </div>
     `;

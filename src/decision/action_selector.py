@@ -228,14 +228,18 @@ class ActionSelector:
             )
 
         # -------------------------------------------------------------
-        # 8. Malicious App / Sideloaded APK
+        # 8. Malicious App / Sideloaded APK / Device Takeover / Virus
         # -------------------------------------------------------------
-        if ctx.journey == "clicked_link" and (ctx.suspicious_app_installed or ctx.accessibility_service_detected or matches_any(t, [r"app\.apk|ääniviesti.*apk|asensin.*sovelluk|installed.*app|installera"])):
+        if (ctx.suspicious_app_installed or ctx.accessibility_service_detected or 
+            matches_any(t, [
+                r"virus|malware|takeover|take over|ready for take over|trojan|hacked|kaapattu|saastunut|tartunta|infektoitunut|sekoilee|hallintaan",
+                r"app\.apk|ääniviesti.*apk|asensin.*sovelluk|installed.*app|installera|laddade ner.*app"
+            ])):
             return DecisionRecord(
                 primary_action="isolate_device_and_scan",
                 risk_level="critical",
                 urgency="immediate",
-                required_steps=["disconnect_device", "avoid_banking_on_device", "remove_app_or_profile", "contact_bank_now"],
+                required_steps=["disconnect_device", "avoid_banking_on_device", "remove_app_or_profile", "get_device_checked", "contact_bank_now"],
                 escalation_required=True,
                 escalation_target="security_specialist",
                 citations=["guidance_malicious_app", "guidance_device_compromise"],
@@ -281,6 +285,17 @@ class ActionSelector:
                     escalation_required=False,
                     escalation_target=None,
                     citations=["guidance_bank_verification", "guidance_card_details_entered"],
+                    decisive_question=None
+                )
+            if facts.get("confirmed_risk") == "no" or matches_any(facts_text, [r"didn't enter|did not enter|en syöttänyt|en maksanut|en antanut|no|nej|ei|inte fyllt i"]):
+                return DecisionRecord(
+                    primary_action="verify_via_official_channel",
+                    risk_level="low",
+                    urgency="today",
+                    required_steps=["dont_open_link", "verify_official_channel"],
+                    escalation_required=False,
+                    escalation_target=None,
+                    citations=["guidance_smishing_basics"],
                     decisive_question=None
                 )
             # Parcel twin in single turn

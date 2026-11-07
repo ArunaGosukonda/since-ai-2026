@@ -489,7 +489,6 @@ function renderAssistantResponse(data) {
             ⚠️ Decisive Clarification Needed to Complete Journey
           </div>
           ${cardContent}
-          ${ragHtml}
         </div>
       </div>
     `;
@@ -556,8 +555,6 @@ function renderAssistantResponse(data) {
               <strong>Specialist Escalation:</strong> ${escHtml}
             </div>
           </div>
-
-          ${ragHtml}
         </div>
       </div>
     `;

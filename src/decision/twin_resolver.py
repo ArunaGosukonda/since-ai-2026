@@ -92,9 +92,9 @@ def detect_decisive_question(ctx: FusedContext, facts: Optional[Dict[str, str]] 
             return "credentials_entered", QUESTIONS["credentials_entered"][lang]
 
     # 6. Clicked parcel / payment link -> card_details_entered
-    if j == "clicked_link" and matches_any(t, [r"\bpaketti\b|\bparcel\b|\btulli\b|\bcustoms\b|\bposti\b|postnord|toimitusmaksu|delivery fee"]):
-        if not matches_any(t, [r"postilaatikko|mailbox|sähköposti.*täynnä"]):
-            if "card_details_entered" not in facts and not matches_any(t, [r"syötin kortin|maksoin jo|en syöttänyt"]):
+    if j == "clicked_link" and matches_any(t, [r"\bpaketti\b|\bparcel\b|\btulli\b|\bcustoms\b|\bposti\b|postnord|toimitusmaksu|delivery fee|clicked|klikkasin|avasin|klickade"]):
+        if not matches_any(t, [r"postilaatikko|mailbox|sähköposti.*täynnä|app\.apk|ääniviesti.*apk|asensin|installed|virus|malware|takeover"]):
+            if "card_details_entered" not in facts and not matches_any(t, [r"syötin kortin|maksoin jo|en syöttänyt|entered card|didn't enter"]):
                 return "card_details_entered", QUESTIONS["card_details_entered"][lang]
 
     # 7. SME CEO fraud / urgent invoice -> payment_status
