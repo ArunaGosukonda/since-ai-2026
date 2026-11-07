@@ -17,6 +17,10 @@ SECRET_PATTERNS = [
     r"ghp_[a-zA-Z0-9]{36}",
     r"bearer\s+[a-zA-Z0-9_\-\.]{25,}",
     r'password\s*=\s*[\'"][^\'"]+[\'"]',
+    r"postgres(?:ql)?://[^\s]+:[^\s]+@",
+    r"\"type\":\s*\"service_account\"",
+    r"SYSTEM_INSTRUCTION",
+    r"<untrusted_evidence>",
 ]
 
 class OutputSecurityGate:

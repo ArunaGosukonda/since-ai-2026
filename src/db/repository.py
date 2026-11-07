@@ -62,6 +62,24 @@ class PostgresRepository:
         finally:
             conn.close()
 
+    def validate_session_access(self, conversation_id: str, user_id: Optional[str]) -> bool:
+        """Verifies if the specified user is authorized to access the conversation."""
+        if not user_id:
+            return True
+        conn = get_db_connection()
+        try:
+            with conn.cursor(row_factory=dict_row) as cursor:
+                cursor.execute(
+                    "SELECT user_id FROM conversations WHERE id = %s",
+                    (conversation_id,),
+                )
+                row = cursor.fetchone()
+                if not row or not row["user_id"]:
+                    return True
+                return str(row["user_id"]) == str(user_id)
+        finally:
+            conn.close()
+
     def add_turn(
         self,
         conversation_id: str,
@@ -92,8 +110,10 @@ class PostgresRepository:
         finally:
             conn.close()
 
-    def get_conversation_turns(self, conversation_id: str) -> List[Dict[str, Any]]:
+    def get_conversation_turns(self, conversation_id: str, requesting_user_id: Optional[str] = None) -> List[Dict[str, Any]]:
         """Retrieves ordered turns for a conversation from PostgreSQL."""
+        if requesting_user_id and not self.validate_session_access(conversation_id, requesting_user_id):
+            raise PermissionError(f"ACCESS_DENIED: User '{requesting_user_id}' is not authorized to access session '{conversation_id}'.")
         conn = get_db_connection()
         try:
             with conn.cursor(row_factory=dict_row) as cursor:
@@ -155,8 +175,10 @@ class PostgresRepository:
         finally:
             conn.close()
 
-    def get_case_state(self, conversation_id: str) -> Dict[str, Any]:
+    def get_case_state(self, conversation_id: str, requesting_user_id: Optional[str] = None) -> Dict[str, Any]:
         """Fetches active case state for a conversation from PostgreSQL."""
+        if requesting_user_id and not self.validate_session_access(conversation_id, requesting_user_id):
+            raise PermissionError(f"ACCESS_DENIED: User '{requesting_user_id}' is not authorized to access state for session '{conversation_id}'.")
         conn = get_db_connection()
         try:
             with conn.cursor(row_factory=dict_row) as cursor:

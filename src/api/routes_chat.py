@@ -29,8 +29,17 @@ def handle_create_session(req: Dict[str, Any]) -> Dict[str, Any]:
 
 def handle_chat_message(req: Dict[str, Any]) -> Dict[str, Any]:
     session_id = req.get("session_id") or f"session_{uuid.uuid4().hex[:12]}"
+    user_id = req.get("user_id") or None
+    channel = req.get("channel") or "web"
+    sender_verified = bool(req.get("sender_identity_verified", False))
     message = req.get("message", "").strip()
-    result = _chatbot.handle_user_message(session_id, message)
+    result = _chatbot.handle_user_message(
+        session_id=session_id,
+        message=message,
+        user_id=user_id,
+        channel=channel,
+        sender_identity_verified=sender_verified,
+    )
     return result
 
 

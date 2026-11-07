@@ -32,20 +32,34 @@ def create_or_update_session(
     language: str = "fi",
     status: str = "active",
     db_path: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> None:
     """Creates or updates a session in PostgreSQL conversations and case_state."""
     conn = get_db_connection()
     try:
         with conn.cursor() as cursor:
-            # 1. Upsert conversation
-            cursor.execute(
-                """
-                INSERT INTO conversations (id, status, channel)
-                VALUES (%s, %s, %s)
-                ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status
-                """,
-                (session_id, status, journey),
-            )
+            if user_id:
+                cursor.execute(
+                    "INSERT INTO users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING",
+                    (user_id,),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO conversations (id, status, channel, user_id)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status, channel = EXCLUDED.channel, user_id = COALESCE(conversations.user_id, EXCLUDED.user_id)
+                    """,
+                    (session_id, status, journey, user_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO conversations (id, status, channel)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (id) DO UPDATE SET status = EXCLUDED.status
+                    """,
+                    (session_id, status, journey),
+                )
             # 2. Ensure case_state exists
             cursor.execute(
                 """
@@ -66,21 +80,36 @@ def add_message(
     msg_type: str,
     content: str,
     db_path: Optional[str] = None,
+    user_id: Optional[str] = None,
 ) -> None:
     """Adds a message to PostgreSQL conversation_turns."""
     conn = get_db_connection()
     meta = json.dumps({"msg_type": msg_type})
     try:
         with conn.cursor() as cursor:
-            # Ensure conversation exists
-            cursor.execute(
-                """
-                INSERT INTO conversations (id, status)
-                VALUES (%s, 'active')
-                ON CONFLICT (id) DO NOTHING
-                """,
-                (session_id,),
-            )
+            # Ensure user and conversation exist
+            if user_id:
+                cursor.execute(
+                    "INSERT INTO users (id) VALUES (%s) ON CONFLICT (id) DO NOTHING",
+                    (user_id,),
+                )
+                cursor.execute(
+                    """
+                    INSERT INTO conversations (id, status, user_id)
+                    VALUES (%s, 'active', %s)
+                    ON CONFLICT (id) DO UPDATE SET user_id = COALESCE(conversations.user_id, EXCLUDED.user_id)
+                    """,
+                    (session_id, user_id),
+                )
+            else:
+                cursor.execute(
+                    """
+                    INSERT INTO conversations (id, status)
+                    VALUES (%s, 'active')
+                    ON CONFLICT (id) DO NOTHING
+                    """,
+                    (session_id,),
+                )
             # Get next turn index
             cursor.execute(
                 "SELECT COALESCE(MAX(turn_index), 0) + 1 FROM conversation_turns WHERE conversation_id = %s",
@@ -103,8 +132,26 @@ def add_message(
         conn.close()
 
 
-def get_messages(session_id: str, db_path: Optional[str] = None) -> List[Dict[str, Any]]:
+def validate_session_ownership(session_id: str, user_id: Optional[str]) -> bool:
+    """Validates that user_id owns session_id if user_id is provided and session has an assigned owner."""
+    if not user_id:
+        return True
+    conn = get_db_connection()
+    try:
+        with conn.cursor(row_factory=dict_row) as cursor:
+            cursor.execute("SELECT user_id FROM conversations WHERE id = %s", (session_id,))
+            row = cursor.fetchone()
+            if not row or not row["user_id"]:
+                return True
+            return str(row["user_id"]) == str(user_id)
+    finally:
+        conn.close()
+
+
+def get_messages(session_id: str, db_path: Optional[str] = None, user_id: Optional[str] = None) -> List[Dict[str, Any]]:
     """Retrieves all messages for a session from PostgreSQL conversation_turns."""
+    if user_id and not validate_session_ownership(session_id, user_id):
+        raise PermissionError(f"ACCESS_DENIED: User '{user_id}' does not own session '{session_id}'.")
     conn = get_db_connection()
     try:
         with conn.cursor(row_factory=dict_row) as cursor:
@@ -161,8 +208,10 @@ def set_fact(session_id: str, key: str, value: str, db_path: Optional[str] = Non
         conn.close()
 
 
-def get_facts(session_id: str, db_path: Optional[str] = None) -> Dict[str, str]:
+def get_facts(session_id: str, db_path: Optional[str] = None, user_id: Optional[str] = None) -> Dict[str, str]:
     """Retrieves confirmed facts from PostgreSQL case_state."""
+    if user_id and not validate_session_ownership(session_id, user_id):
+        raise PermissionError(f"ACCESS_DENIED: User '{user_id}' does not own session '{session_id}'.")
     conn = get_db_connection()
     try:
         with conn.cursor(row_factory=dict_row) as cursor:
