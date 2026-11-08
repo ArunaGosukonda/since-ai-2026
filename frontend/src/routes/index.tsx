@@ -13,7 +13,7 @@ import {
 import { i18n, locales, type Lang } from "@/lib/i18n";
 import { ChatScreen } from "@/components/ChatScreen";
 import { ComposeUnknown, Inbox, MessageDetail, StoppedBanner } from "@/components/MessageScreens";
-import { classifySms, OLD_MESSAGES, pickExample, type Msg } from "@/lib/messages";
+import { classifySms, OLD_MESSAGES, pickExample, type MessageScenario, type Msg } from "@/lib/messages";
 import {
   bubbleText,
   CallAfter,
@@ -23,7 +23,7 @@ import {
   type CallPhase,
 } from "@/components/CallScreens";
 import { dangerPhrases } from "@/lib/dangerPhrases";
-import { CALLER_NUMBER } from "@/lib/callScript";
+import { CALLER_NUMBER, type CallScenarioKey } from "@/lib/callScript";
 import { storyText, type ChatStory } from "@/lib/chat";
 import { useLiveLog } from "@/lib/live";
 import { setDemoProfile, useDemoProfile } from "@/lib/decision";
@@ -117,9 +117,15 @@ function Demo() {
   /** A text arrives: the project pipeline checks it first, then it lands in the inbox. */
   const [checkingSms, setCheckingSms] = useState(false);
   const lastExample = useRef<string | null>(null);
-  const receiveSms = async (sender: string, text: string, msgLang: string, origin: string) => {
+  const receiveSms = async (
+    sender: string,
+    text: string,
+    msgLang: string,
+    origin: string,
+    senderVerified: boolean = false,
+  ) => {
     setCheckingSms(true);
-    const verdict = await classifySms(sender, text, msgLang);
+    const verdict = await classifySms(sender, text, msgLang, senderVerified);
     setCheckingSms(false);
     const at = Date.now();
     const msg: Msg = { id: `sms-${at}`, sender, text, time: "now", at, verdict, origin };
@@ -132,7 +138,14 @@ function Demo() {
       bannerTimer.current = setTimeout(() => setBanner(false), 4000);
     }
   };
+
+  const receiveScenario = (sc: MessageScenario) => {
+    const bodyText = sc.body[lang] || sc.body.en;
+    void receiveSms(sc.sender, bodyText, lang, sc.id, Boolean(sc.sender_identity_verified));
+  };
   const [currentCaller, setCurrentCaller] = useState<string>(CALLER_NUMBER);
+  const [currentVerified, setCurrentVerified] = useState<boolean>(false);
+  const [currentScenario, setCurrentScenario] = useState<CallScenarioKey>("C_suspicious_bank_otp");
   /** Demo: a random text message from the dev dataset. */
   const receiveExample = () => {
     const e = pickExample(lang, lastExample.current);
@@ -181,21 +194,27 @@ function Demo() {
     setCalls((list) => [{ id: `caller-${at}`, who: "caller", customNumber: currentCaller, note, when: at }, ...list]);
   };
   /** The phone rings first; nothing is transcribed until the user answers. */
-  const startCall = (callerNum: string = CALLER_NUMBER) => {
+  const startCall = (
+    callerNum: string = CALLER_NUMBER,
+    verified: boolean = false,
+    scenarioKey?: CallScenarioKey,
+  ) => {
     stopAll();
     setCurrentCaller(callerNum);
+    setCurrentVerified(verified);
+    if (scenarioKey) setCurrentScenario(scenarioKey);
     setCallPhase("ringing");
     setScreen("incomingCall");
   };
   const answerCall = () => {
     setCallPhase("inCall");
-    if (getMicConsent() === true) void call.start(currentCaller);
+    if (getMicConsent() === true) void call.start(currentCaller, currentVerified);
     else setAskMic(true); // nothing is recorded until the user taps Allow
   };
   const answerMic = (allow: boolean) => {
     setAskMic(false);
     setMicConsent(allow);
-    if (allow) void call.start(currentCaller);
+    if (allow) void call.start(currentCaller, currentVerified);
   };
   /** User declines while ringing, or hangs up during the call. */
   const declineCall = () => {
@@ -315,9 +334,11 @@ function Demo() {
               stage={call.stage}
               liveFlags={call.liveFlags}
               callerNumber={currentCaller}
+              callerVerified={currentVerified}
+              currentScenario={currentScenario}
               onDecline={declineCall}
               onAnswer={answerCall}
-              onSimulate={call.simulate}
+              onSimulate={() => void call.simulate()}
             />
           ) : screen === "inbox" ? (
             <div className="flex flex-1 flex-col pt-2">
@@ -327,6 +348,7 @@ function Demo() {
                 messages={messages}
                 newId={newId}
                 ignored={ignored}
+                onSelectScenario={receiveScenario}
                 onOpen={(m) => {
                   setBanner(false);
                   setOpenId(m.id);

@@ -6,10 +6,10 @@ import { t as QueryClient } from "../_libs/tanstack__query-core.mjs";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawn } from "node:child_process";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-DqDxxA74.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-BztqA17z.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
-var styles_default = "/assets/styles-vCa1y1OU.css";
+var styles_default = "/assets/styles-Dezrz9y_.css";
 function reportLovableError(error, context = {}) {
 	if (typeof window === "undefined") return;
 	window.__lovableEvents?.captureException?.(error, {
@@ -178,7 +178,7 @@ function RootComponent() {
 		children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(Outlet, {})
 	});
 }
-var $$splitComponentImporter = () => import("./routes-1RK-hh5Z.mjs");
+var $$splitComponentImporter = () => import("./routes-Dd8n3nMU.mjs");
 var Route$2 = createFileRoute("/")({
 	head: () => ({ meta: [
 		{ title: "DNA Assistant — Scam protection demo" },
@@ -266,6 +266,7 @@ var Route$1 = createFileRoute("/api/classify")({ server: { handlers: { POST: asy
 	const sender = typeof b?.sender === "string" && b.sender.trim() ? b.sender.slice(0, 60) : "Unknown";
 	const lang = typeof b?.lang === "string" && LANGS.has(b.lang) ? b.lang : "en";
 	const profile = typeof b?.profile === "string" && PROFILES.has(b.profile) ? b.profile : "default";
+	const sender_identity_verified = Boolean(b?.sender_identity_verified);
 	try {
 		const granted = Array.isArray(b?.granted) ? b.granted.filter((g) => typeof g === "string" && SIGNAL_PATH.test(g)).slice(0, 20) : [];
 		const apiBase = process.env["API_BASE_URL"] || "http://127.0.0.1:8080";
@@ -279,7 +280,8 @@ var Route$1 = createFileRoute("/api/classify")({ server: { handlers: { POST: asy
 					body,
 					lang,
 					granted,
-					profile
+					profile,
+					sender_identity_verified
 				})
 			});
 			if (res.ok) {

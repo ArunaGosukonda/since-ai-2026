@@ -411,6 +411,16 @@ var Phone = createLucideIcon("phone", [["path", {
 * This source code is licensed under the ISC license.
 * See the LICENSE file in the root directory of this source tree.
 */
+var Play = createLucideIcon("play", [["path", {
+	d: "M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z",
+	key: "10ikf1"
+}]]);
+/**
+* @license lucide-react v0.575.0 - ISC
+*
+* This source code is licensed under the ISC license.
+* See the LICENSE file in the root directory of this source tree.
+*/
 var SendHorizontal = createLucideIcon("send-horizontal", [["path", {
 	d: "M3.714 3.048a.498.498 0 0 0-.683.627l2.843 7.627a2 2 0 0 1 0 1.396l-2.842 7.627a.498.498 0 0 0 .682.627l18-8.5a.5.5 0 0 0 0-.904z",
 	key: "117uat"
@@ -599,4 +609,4 @@ var Wifi = createLucideIcon("wifi", [
 	}]
 ]);
 //#endregion
-export { ChevronUp as C, ArrowRight as D, Battery as E, ArrowLeft as O, CircleQuestionMark as S, ChevronDown as T, MessageCircleQuestionMark as _, Square as a, Headset as b, ShieldCheck as c, Phone as d, PhoneOff as f, MessageSquare as g, Mic as h, Trash2 as i, ShieldBan as l, OctagonAlert as m, Volume2 as n, Signal as o, PhoneIncoming as p, TriangleAlert as r, ShieldOff as s, Wifi as t, SendHorizontal as u, Lock as v, ChevronLeft as w, EyeOff as x, Info as y };
+export { CircleQuestionMark as C, Battery as D, ChevronDown as E, ArrowRight as O, EyeOff as S, ChevronLeft as T, MessageSquare as _, Square as a, Info as b, ShieldCheck as c, Play as d, Phone as f, Mic as g, OctagonAlert as h, Trash2 as i, ArrowLeft as k, ShieldBan as l, PhoneIncoming as m, Volume2 as n, Signal as o, PhoneOff as p, TriangleAlert as r, ShieldOff as s, Wifi as t, SendHorizontal as u, MessageCircleQuestionMark as v, ChevronUp as w, Headset as x, Lock as y };

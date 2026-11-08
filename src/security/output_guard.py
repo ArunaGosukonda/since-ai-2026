@@ -79,7 +79,9 @@ class OutputSecurityGate:
             violations.append(f"Secret pattern detected: {len(secret_hits)} hit(s)")
 
         # 3. Jargon check
-        jargon_hits = textcheck.jargon_hits(advice, lang)
+        allowed_security_terms = {"otp", "credential", "credentials", "mfa", "pin"}
+        raw_jargon = textcheck.jargon_hits(advice, lang)
+        jargon_hits = [j for j in raw_jargon if j.lower() not in allowed_security_terms]
         if jargon_hits:
             violations.append(f"Jargon detected: {jargon_hits}")
 

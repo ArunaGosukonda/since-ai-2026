@@ -64,11 +64,14 @@ class GuidanceRAGRetriever:
         if audience:
             filters["audience"] = audience
 
-        passages = self.retriever.retrieve(
-            contextual_query=ctx_query,
-            top_k=top_k,
-            filters=filters,
-        )
+        try:
+            passages = self.retriever.retrieve(
+                contextual_query=ctx_query,
+                top_k=top_k,
+                filters=filters,
+            )
+        except Exception:
+            passages = []
 
         results = []
         for p in passages:

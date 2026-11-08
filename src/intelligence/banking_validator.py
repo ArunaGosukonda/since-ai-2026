@@ -56,7 +56,7 @@ class BankingValidator:
 
         # Detect banking domain presence
         is_banking = bool(re.search(
-            r"\b(pank[a-zäö]*|bank[a-zäö]*|verkkopank[a-zäö]*|tili[a-zäö]*|lain[a-zäö]*|account[a-zäö]*|loan[a-zäö]*|debit[\-\s]*card|gold\s*card|credit\s*card|kort[a-zäö]*|payment|maksu|maksettu|veloitus|transaction|tapahtuma|balance|saldo|siirto|transfer|iban|otp|mfa|tunnusluk[a-zäö]*|paypal|paypai|refund|parcel|delivery)\b",
+            r"\b(pank[a-zäö]*|bank[a-zäö]*|verkkopank[a-zäö]*|tili[a-zäö]*|lain[a-zäö]*|account[a-zäö]*|loan[a-zäö]*|debit[\-\s]*card|gold\s*card|credit\s*card|kort[a-zäö]*|payment|maksu|maksettu|veloitus|transaction|tapahtuma|balance|saldo|siirto|transfer|iban|otp|mfa|tunnusluk[a-zäö]*|paypal|paypai|refund|parcel|delivery|salasana[a-zäö]*|password[s]?|passcode[s]?|pin[s]?|credential[s]?|lösenord[a-zäö]*|etätuki|anydesk|teamviewer|remote[\-\s]*access)\b",
             t,
             re.IGNORECASE,
         ))
@@ -71,18 +71,32 @@ class BankingValidator:
         ))
 
         # Critical attack triggers that immediately make communication SUSPICIOUS_OR_MALICIOUS
+        # Clean text for negative assertions like "did not ask for credentials" or legitimate password reset notices
+        t_clean = re.sub(
+            r"\b(?:did not|didn'\''t|not|without|ei\s+pyytänyt|inte\s+frågade|never)\s+(?:ask|asking|asked|asks|request|requesting|demand|demanding|require)\b.*?(?:credential[s]?|password[s]?|code[s]?|pin[s]?|otp|salasana[a-z]*|tunnusluk[a-z]*)",
+            "",
+            t,
+            flags=re.IGNORECASE,
+        )
+        t_clean = re.sub(r"\b(?:requested\s+(?:a\s+)?(?:password\s*reset|reset\s*link)|reset\s+your\s+password)", "", t_clean, flags=re.IGNORECASE)
+
         # Demands to disclose/enter credentials (active credential extraction)
         asks_credentials = bool(re.search(
-            r"(?:anna|kerro|syötä|lähetä|vahvista|disclose|give|tell|enter|send|share|provide|input|reply\s+with|type|submit)\b.*?(?:salasana|password|pin|tunnusluku|pankkitunnus|bankid|koodi|code|otp|mfa|cvv|cvc|verification\s*code|six-digit)",
-            t,
+            r"(?:asks?|asked|asking|demands?|demanded|demanding|requesting|requested|requests?|wants?|tell\s+(?:him|her|me|them)|give|anna|kerro|syötä|lähetä|vahvista|disclose|read|enter|send|share|provide|input|reply\s+with|type|submit)\b.*?(?:salasana[a-zäö]*|password[s]?|passcode[s]?|pin[s]?|tunnusluk[a-zäö]*|pankkitunnus|bankid|koodi[a-zäö]*|code[s]?|otp|mfa|cvv|cvc|verification\s*code|confirmation\s*code|security\s*credential[s]?|credential[s]?|six-digit|card\s*pin|kortin\s*pin)",
+            t_clean,
             re.IGNORECASE,
         )) or bool(re.search(
-            r"(?:approve.*(?:login|prompt)|accept.*prompt|approve.*mobiiliavain|vahvista.*kirjautumi|kuittaa.*kirjautumi|hyväksy.*kirjautumi)",
-            t,
+            r"(?:approve|accept|kuittaa|hyväksy|vahvista)\b.*?(?:mfa|login|prompt|mobiiliavain|kirjautumi|notification|request)",
+            t_clean,
+            re.IGNORECASE,
+        )) or bool(re.search(
+            r"(?:blocked\s+unless\s+(?:i\s+)?share|account.*blocked.*(?:password|pin|code|otp))",
+            t_clean,
             re.IGNORECASE,
         ))
+
         asks_money_transfer = bool(re.search(
-            r"(?:siirrä\s+(?:rahaa|varat|summa)|transfer\s+(?:funds|money|amount)|turvatil|safe\s*account|maksa\s+heti|urgent\s+wire|transfer\s+money\s+immediately|account\s+will\s+be\s+blocked\s+in\s+10\s+minutes)",
+            r"(?:siirrä\s+(?:rahaa|varat|summa)|transfer\s+(?:funds|money|amount)|turvatil|safe\s*(?:holding\s*)?account|säkert\s*konto|maksa\s+heti|urgent\s+wire|wire\s+(?:transfer|\d+|funds|money|eur)|transfer\s+money\s+immediately|account\s+will\s+be\s+blocked\s+in\s+10\s+minutes)",
             t,
             re.IGNORECASE,
         ))
@@ -97,12 +111,12 @@ class BankingValidator:
             re.IGNORECASE,
         ))
         qr_phishing = bool(re.search(
-            r"(?:scan|skannaa)\s+(?:this\s+)?qr\s*code\b.*?(?:reactivate|tili|pankki|bank|account)",
+            r"(?:scan|skannaa)\s+(?:tämä\s+|this\s+)?qr[\-\s]*(?:code|koodi)\b.*?(?:reactivate|tili|pankki|bank|account|kort[a-z]*|card)",
             t,
             re.IGNORECASE,
         ))
         bec_fraud = bool(re.search(
-            r"(?:ceo|toimitusjohtaja|cfo|director)\b.*?(?:asks|instructs|requests|pyytää)\b.*?(?:transfer|wire|siirtää)\b.*?(?:new\s+supplier|uudelle\s+toimittajalle|urgent|heti)",
+            r"(?:ceo|toimitusjohtaja|cfo|director)\b.*?(?:asks|instructs|requests|pyytää|approved|requires|demands)\b.*?(?:transfer|wire|siirtää|payment|maksu|invoice|lasku)\b.*?(?:new\s+supplier|uudelle\s+toimittajalle|urgent|heti|today|tänään|iban|beneficiary)",
             t,
             re.IGNORECASE,
         ))
@@ -112,12 +126,34 @@ class BankingValidator:
             re.IGNORECASE,
         ))
         unsolicited_inbound_call = bool(re.search(
-            r"(?:soitti|puhelu|soittaja|called\s+me|inbound\s+call|claimed\s+to\s+be\s+(?:a\s+)?bank\s+employee|sanoi\s+olevansa\s+pankista)",
+            r"(?:soitti|puhelu|soittaja|called|caller|inbound\s+call|claims?\s+to\s+be\s+(?:a\s+)?bank\s+employee|claimed\s+to\s+be\s+(?:a\s+)?bank\s+employee|sanoi\s+olevansa\s+pankista)",
             t,
             re.IGNORECASE,
         ))
         remote_access_request = bool(re.search(
-            r"(?:anydesk|teamviewer|etätuki|remote\s+support|asenna.*ohjelma|quicksupport)",
+            r"(?:anydesk|teamviewer|etätuki|quicksupport|remote[\-\s]*access|remote[\-\s]*support|asenna.*ohjelma|install\s+(?:a\s+)?remote[\-\s]*access)",
+            t,
+            re.IGNORECASE,
+        ))
+        account_block_threat = bool(re.search(
+            r"(?:account|tili|konto)\b.*?\b(?:blocked|lukittu|suljetaan|spärrat|suspended|closed|frozen)\b.*?\b(?:unless|jos\s+et|om\s+inte|click|klikkaa|klicka|open|avaa|link|linkki|länk|immediately|heti|genast)",
+            t,
+            re.IGNORECASE,
+        )) or bool(re.search(
+            r"(?:blocked|lukittu|suljetaan|spärrat|suspended|frozen)\s+unless\b.*?(?:click|open|link|verify|log\s*in|kirjaudu|immediately|heti)",
+            t,
+            re.IGNORECASE,
+        ))
+        shortened_url_banking_lure = bool(re.search(
+            r"(?:shortened\s+(?:url|link)|lyhennetty\s+(?:linkki|osoite)|förkortad\s+länk|bit\.ly|tinyurl|t\.co|is\.gd|cutt\.ly|rb\.gy)\b.*?(?:log\s*in|sign\s*in|kirjaudu|logga\s*in|bank|pankki)",
+            t,
+            re.IGNORECASE,
+        )) or bool(re.search(
+            r"(?:asked|pyysi|pyytää|bad|demanded)\b.*?\b(?:log\s*in|kirjaudu|logga\s*in)\b.*?\b(?:bank|verkkopankki|pankkiin)",
+            t,
+            re.IGNORECASE,
+        )) or bool(re.search(
+            r"(?:log\s*in|kirjaudu|logga\s*in)\s+to\s+(?:my\s+|your\s+)?bank\b.*?(?:shortened|link|url)",
             t,
             re.IGNORECASE,
         ))
@@ -143,22 +179,31 @@ class BankingValidator:
         # -------------------------------------------------------------
 
         # Phishing / Malicious triggers -> SUSPICIOUS_OR_MALICIOUS
-        if asks_credentials or fake_employee_with_link:
+        if asks_credentials or fake_employee_with_link or remote_access_request:
+            req_type = "remote-access software" if remote_access_request and not asks_credentials else "security credentials, passwords, PINs, or OTP codes"
             return {
                 "is_banking": True,
                 "classification": "SUSPICIOUS_OR_MALICIOUS",
                 "evidence_strength": "conclusive",
                 "supporting_indicators": [
-                    "Requests sensitive authentication credentials, passwords, or OTP/MFA codes.",
-                    "Legitimate financial institutions never ask customers to disclose passwords or verification codes.",
+                    f"Requests {req_type} during an unsolicited call or communication.",
+                    "Legitimate financial institutions and companies NEVER ask for passwords, PINs, OTP codes, or remote access over the phone.",
                 ],
                 "missing_verification": [],
                 "explanation": (
                     "Banks and financial institutions will NEVER ask you to disclose your passwords, PINs, "
-                    "or one-time security codes. Any message or call requesting these is a critical fraud attempt."
+                    "or one-time security codes, approve unprompted MFA requests, or install remote-access software over the phone. "
+                    "Any message or call requesting these is a critical fraud attempt."
                 ),
                 "recommended_action": "isolate_and_block",
-                "safe_next_step": "Hang up or delete the message immediately. Do not share any codes. Contact your bank via the number on your payment card.",
+                "safe_next_step": "End the call if the caller is asking for credentials. Do not share your password or OTP. Contact your bank using the official number.",
+                "steps": [
+                    "Do not share your password with the caller.",
+                    "Never disclose your OTP, PIN, MFA code or other authentication credentials over a call.",
+                    "End the call if the caller is asking for credentials.",
+                    "Contact your bank using the official number or open its official app or website independently.",
+                    "If you already shared credentials, contact the bank immediately and secure your account.",
+                ],
             }
 
         if asks_money_transfer or bec_fraud:
@@ -197,6 +242,53 @@ class BankingValidator:
                 "safe_next_step": "Do not open any link, scan the QR code, or pay any fee. Delete the message.",
             }
 
+        if account_block_threat:
+            return {
+                "is_banking": True,
+                "classification": "SUSPICIOUS_OR_MALICIOUS",
+                "evidence_strength": "conclusive",
+                "supporting_indicators": [
+                    "Coercive threat that bank account will be blocked unless a link is clicked immediately.",
+                    "Urgency and fear tactics are classic hallmarks of phishing attacks designed to force hasty action.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "Threats claiming your bank account will be immediately blocked unless you click a link are classic "
+                    "phishing coercion tactics. Legitimate banks never send messages demanding urgent link clicks under "
+                    "threat of immediate account suspension."
+                ),
+                "recommended_action": "isolate_and_block",
+                "safe_next_step": "Do not click the link. Banks never block accounts via sudden link-click ultimatums. Check your account status directly in your official banking app or call your bank using the phone number on your card.",
+                "steps": [
+                    "Do not click or open the link.",
+                    "Do not enter any personal details, passwords, or verification codes.",
+                    "Verify your account status safely by logging into your official bank app directly or calling the number on your card.",
+                ],
+            }
+
+        if shortened_url_banking_lure:
+            return {
+                "is_banking": True,
+                "classification": "SUSPICIOUS_OR_MALICIOUS",
+                "evidence_strength": "conclusive",
+                "supporting_indicators": [
+                    "Shortened URL masking destination coupled with bank login request.",
+                    "Banks never use URL shorteners to direct customers to login pages.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "Shortened URLs hide the true destination website and are frequently used in scams to conceal "
+                    "fraudulent login pages. Banks never send shortened links requesting you to log in to your account."
+                ),
+                "recommended_action": "do_not_interact_and_delete",
+                "safe_next_step": "Do not open the shortened link. Never log in through links sent in messages. Access your bank directly through its official app or official website.",
+                "steps": [
+                    "Do not open or click the shortened link.",
+                    "Never enter banking passwords, PINs, or credentials on websites accessed via forwarded messages.",
+                    "Access your bank independently through its official mobile application or verified website.",
+                ],
+            }
+
         # Scenario 4: Password reset notifications
         is_password_reset = bool(re.search(
             r"(?:password\s*reset|salasanan\s*palautus|reset\s*link|palautuslinkki|resetointi)",
@@ -221,6 +313,30 @@ class BankingValidator:
                 ),
                 "recommended_action": "no_action_needed",
                 "safe_next_step": "If you requested this reset, proceed. If not, ignore it and check your official banking app directly.",
+            }
+
+        # Scenario 3: Legitimate bank transaction / payment completion receipt
+        is_transaction_receipt = bool(re.search(
+            r"(?:payment\s+of\s+€?\s*\d+[\.,]\d+\s*€?|maksu\s+\d+[\.,]\d+\s*€|betalning\s+på\s+\d+[\.,]\d+\s*€|transaction\s+(?:completed|approved)|maksu.*(?:hyväksytty|veloittu)|payment.*completed)",
+            t,
+            re.IGNORECASE,
+        ))
+        if is_transaction_receipt and not asks_credentials and not asks_money_transfer and not has_suspicious_link and not asks_fake_refund:
+            return {
+                "is_banking": True,
+                "classification": "BENIGN",
+                "evidence_strength": "high",
+                "supporting_indicators": [
+                    "Notification is a transaction completion confirmation or receipt.",
+                    "No links, credential requests, or unauthorized transfer instructions.",
+                ],
+                "missing_verification": [],
+                "explanation": (
+                    "This is a standard transaction receipt notification. It does not ask for passwords, codes, "
+                    "or money transfers. You can review your transaction details in your official bank app."
+                ),
+                "recommended_action": "no_action_needed",
+                "safe_next_step": "You can view your confirmed transaction history directly inside your bank's mobile application.",
             }
 
         # Scenario 10: Compromised Genuine Employee Account
@@ -356,7 +472,39 @@ class BankingValidator:
             t,
             re.IGNORECASE,
         ))
+        unverified_sender = bool(re.search(
+            r"\b(?:do\s+not\s+know|don't\s+know|not\s+sure|unsure|epävarma|vet\s+inte|unverified|cannot\s+verify|unknown)\b.*?\b(?:genuine|real|authentic|aito|äkta|sender|lähettäjä|avsändare|legit)\b|\b(?:sender|lähettäjä|avsändare)\b.*?\b(?:not\s+sure|unsure|unverified|unknown|do\s+not\s+know|don't\s+know)\b",
+            t,
+            re.IGNORECASE,
+        ))
         if is_security_or_txn_alert and not asks_credentials and not asks_money_transfer and not has_suspicious_link:
+            if unverified_sender or (channel in ("chat", "sms") and not sender_identity_verified and "do not know" in t.lower()):
+                return {
+                    "is_banking": True,
+                    "classification": "INCONCLUSIVE",
+                    "evidence_strength": "insufficient",
+                    "supporting_indicators": [
+                        "Transaction notification received from an unverified sender without cryptographic or in-app proof.",
+                        "Sender IDs, phone numbers, and display names can be faked on SMS and email.",
+                    ],
+                    "missing_verification": [
+                        "Sender identity proof",
+                        "Cryptographic authentication headers",
+                        "Confirmation in official banking app",
+                    ],
+                    "explanation": (
+                        "The authenticity of this transaction notification cannot be verified from the message alone, "
+                        "as sender names and numbers can be easily faked. Do not use any links or phone numbers provided "
+                        "in the notification."
+                    ),
+                    "recommended_action": "verify_via_official_channel",
+                    "safe_next_step": "Do not interact with the message or its contacts. Check your transaction history directly in your official banking app or call your bank using the phone number printed on your card.",
+                    "steps": [
+                        "Do not click any links or call phone numbers in the notification.",
+                        "Open your official banking app directly from your phone to check your transaction history.",
+                        "If you see no matching transaction or suspect fraud, contact your bank using the official phone number on your card.",
+                    ],
+                }
             return {
                 "is_banking": True,
                 "classification": "BENIGN",

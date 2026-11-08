@@ -26,6 +26,8 @@ import {
 import { StageBadge, StepsList, WhyPanel, consentText } from "@/components/DecisionViews";
 import { getMicConsent, setMicConsent } from "@/lib/micConsent";
 
+
+
 export function ChatScreen({
   lang,
   prefill,
@@ -444,7 +446,14 @@ function FinalCard({
       data-testid="final-card"
       data-stage={reply.stage}
     >
-      <StageBadge stage={reply.stage} lang={lang} />
+      <div className="flex items-center justify-between">
+        <StageBadge stage={reply.stage} lang={lang} />
+        {d && (d as unknown as { outcome_type?: string })?.outcome_type && (
+          <span className="rounded-full bg-navy/10 px-3 py-1 text-xs font-bold text-navy">
+            {(d as unknown as { outcome_type?: string }).outcome_type}
+          </span>
+        )}
+      </div>
       <h2 className="text-[24px] leading-snug">{reply.headline}</h2>
       {reply.checked && (
         <p className="flex gap-3 rounded-xl bg-safe px-4 py-3 text-[18px] font-bold leading-snug text-safe-foreground">

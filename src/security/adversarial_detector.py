@@ -21,10 +21,10 @@ PROTECTED_INFO_PATTERNS = [
     r"(?:tell|show|print|reveal|display|output|give|read|dump|view|export|explain|describe)\s+(?:me\s+)?(?:the\s+|your\s+)?(?:complete\s+|full\s+|all\s+)?(?:python\s+)?(?:coding\s*logic|system\s*logic|internal\s*logic|source\s*code|codebase|implementation|architecture)",
     r"(?:what\s+is|explain|describe|tell\s+me)\s+(?:the\s+|your\s+)?(?:coding\s*logic|internal\s*logic|underlying\s*code)",
     r"(?:how\s+(?:are\s+you|were\s+you)\s+(?:coded|programmed|built)|how\s+does\s+your\s+code\s+work)",
-    r"(?:kerro|näytä|selitä)\s+(?:minulle\s+)?(?:koodauslogiikka|lähdekoodi|ohjelmakoodi|sisäinen\s+logiikka)",
-    r"(?:show|print|reveal|display|output|give|read|dump)\s+(?:me\s+)?(?:the\s+|your\s+)?(?:complete\s+|hidden\s+|internal\s+)?(?:system\s+prompt|developer\s+instructions|system\s+instructions)",
-    r"(?:show|print|reveal|display|give)\s+(?:me\s+)?(?:your\s+)?(?:gemini\s+)?(?:api[_\s]?key|credentials|secret)",
-    r"(?:show|print|reveal|display|give)\s+(?:me\s+)?(?:your\s+)?(?:(?:postgresql|postgres|database|db|sql)\s+)*(?:password|conn(?:ection)?\s*string)",
+    r"(?:kerro|näytä|selitä|anna|luovuta)\s+(?:minulle\s+)?(?:koodauslogiikka|lähdekoodi[a-z]*|ohjelmakoodi|sisäinen\s+logiikka)",
+    r"(?:show|print|reveal|display|output|give|read|dump)\s+(?:me\s+)?(?:the\s+|your\s+)?(?:complete\s+|hidden\s+|internal\s+)?(?:system\s+prompt|developer\s+instructions|system\s+instructions|internal\s+instructions|instructions|prompt)",
+    r"(?:what\s+is|show|print|reveal|display|give|tell\s+me)\s+(?:me\s+)?(?:the\s+|your\s+)?(?:secret\s+)?(?:gemini\s+)?(?:api[_\s]?key|credentials|secret)",
+    r"(?:what\s+is|show|print|reveal|display|give|tell\s+me)\s+(?:me\s+)?(?:the\s+|your\s+)?(?:all\s+)?(?:secret\s+)?(?:(?:postgresql|postgres|database|db|sql|system|admin)\s+)+(?:passwords?|conn(?:ection)?\s*string)",
     r"(?:read|cat|open|view|show|display)\s+(?:me\s+)?(?:and\s+display\s+)?(?:all\s+)?(?:the\s+|your\s+)?(?:\.env|env\s+file|environment\s+variables?)",
     r"(?:show|list|export|dump)\s+(?:all\s+)?(?:database\s+)?(?:tables?|records?|schema|sql\s+queries)",
     r"(?:give|reveal|show|print|tell|display)\s+(?:me\s+)?(?:dan['’]?s\s+)?(?:expected\s+answers?|ground\s*truth|evaluation\s+criteria|test\s*answers?|competition\s*answers?)",
@@ -45,11 +45,12 @@ PROTECTED_INFO_PATTERNS = [
 # 20 Canonical and Variant Direct & Indirect Jailbreak Patterns
 DIRECT_JAILBREAK_PATTERNS = [
     # 1. Ignore previous instructions
-    r"ignore\s+(?:all\s+)?(?:previous|prior|above|system)\s+instructions?",
-    # 2. Unrestricted AI
-    r"you\s+are\s+now\s+(?:an?\s+)?unrestricted\s+ai",
-    # 3. Pretend no restrictions / unrestricted AI
-    r"pretend\s+(?:you\s+(?:are|have)\s+)?(?:no\s+restrictions?|(?:an?\s+)?unrestricted\s+ai(?:\s+with\s+no\s+security\s+policies)?)",
+    r"(?:ignore|disregard)\s+(?:all\s+)?(?:previous|prior|above|system)?\s+(?:instructions?|guidelines?|rules?|safety\s+guidelines?|policies)",
+    # 2. Unrestricted AI / Assistant
+    r"you\s+are\s+now\s+(?:an?\s+)?(?:unrestricted\s+(?:ai|assistant|model|bot|agent)|(?:in\s+)?(?:unfiltered\s+)?developer\s+override\s+mode)",
+    # 3. Pretend no restrictions / unrestricted assistant
+    r"pretend\s+(?:you\s+(?:are|have)\s+)?(?:no\s+(?:safety\s+)?restrictions?|(?:an?\s+)?unrestricted\s+(?:ai|assistant|model|bot|agent)(?:\s+(?:with|without)\s+.*)?|without\s+safety\s+rules?)",
+    r"(?:unrestricted|unfiltered)\s+(?:assistant|ai|model|bot|agent)",
     # 4. Developer override
     r"i\s+am\s+(?:your\s+|the\s+)?developer[;,\.]?\s+(?:disable|bypass|turn\s*off)\s+(?:all\s+)?(?:your\s+)?restrictions?",
     # 5. Administrator override
@@ -92,9 +93,9 @@ DIRECT_JAILBREAK_PATTERNS = [
     r"simulate\s+(?:an?\s+)?unrestricted\s+(?:ai|model|llm)",
     r"\b(?:select\s+\*\s+from\s+users?|drop\s+table|delete\s+from\s+conversations)\b",
     # Multilingual jailbreak patterns (Finnish & Telugu)
-    r"unohda\s+kaikki\s+aiemmat\s+ohjeet",
-    r"olet\s+nyt\s+rajoittamaton\s+tekoäly",
-    r"näytä\s+lähdekoodi|tulosta\s+järjestelmäkehote|paljasta\s+salasanasi|näytä\s+järjestelmäohjeet",
+    r"(?:unohda|ohita)\s+kaikki\s+aiemmat\s+ohjeet",
+    r"olet\s+nyt\s+(?:rajoittamaton\s+tekoäly|järjestelmänhallintatilassa|kehittäjätilassa)",
+    r"näytä\s+lähdekoodi|tulosta\s+järjestelmäkehote|paljasta\s+salasanasi|näytä\s+järjestelmäohjeet|anna.*lähdekoodi",
     r"మునుపటి\s+సూచనలను\s+విస్మరించండి",  # Ignore previous instructions in Telugu
     r"మీ\s+రహస్య\s+కోడ్‌ను\s+చూపండి",      # Show your secret code in Telugu
     r"సిస్టమ్\s+ప్రాంప్ట్",               # System prompt in Telugu

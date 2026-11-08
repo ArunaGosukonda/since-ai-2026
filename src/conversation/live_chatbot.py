@@ -98,6 +98,7 @@ class LiveChatbot:
     """Coordinates arbitrary live chat sessions with multi-turn fact elicitation and hybrid security."""
 
     def __init__(self):
+        from src.intelligence.security_analyzer import SecurityAnalyzer
         self.rag = _rag
         self.selector = _selector
         self.guard = _guard
@@ -105,6 +106,7 @@ class LiveChatbot:
         self.scope = _scope_enforcer
         self.banking = _banking_validator
         self.classifier = _classifier
+        self.security_analyzer = SecurityAnalyzer()
 
     def handle_user_message(
         self,
@@ -121,28 +123,31 @@ class LiveChatbot:
         # -------------------------------------------------------------
         # 1. Privacy & Session Isolation Authorization Check
         # -------------------------------------------------------------
-        if user_id and not validate_session_ownership(session_id, user_id):
-            return {
-                "session_id": session_id,
-                "reply_type": "final",
-                "outcome_type": "ACCESS_DENIED",
-                "user_language": lang,
-                "text": "Pääsy estetty. Sinulla ei ole oikeutta tarkastella tai muokata toisen käyttäjän istuntoa.",
-                "text_en": "Access denied. You do not have permission to access or modify another user's session.",
-                "steps_primary": ["Käytä omaa istuntotunnistettasi tai aloita uusi istunto."],
-                "steps_en": ["Use your authorized session identifier or start a new session."],
-                "decision": {
-                    "risk_level": "routine",
-                    "primary_action": "access_denied",
-                    "urgency": "routine",
-                    "advice_text": "Access denied. You do not have permission to access or modify another user's session.",
-                    "steps": ["Use your authorized session identifier or start a new session."],
+        try:
+            if user_id and not validate_session_ownership(session_id, user_id):
+                return {
+                    "session_id": session_id,
+                    "reply_type": "final",
                     "outcome_type": "ACCESS_DENIED",
-                    "confidence": 1.0,
-                    "abstained": False,
-                },
-                "rag_docs": [],
-            }
+                    "user_language": lang,
+                    "text": "Pääsy estetty. Sinulla ei ole oikeutta tarkastella tai muokata toisen käyttäjän istuntoa.",
+                    "text_en": "Access denied. You do not have permission to access or modify another user's session.",
+                    "steps_primary": ["Käytä omaa istuntotunnistettasi tai aloita uusi istunto."],
+                    "steps_en": ["Use your authorized session identifier or start a new session."],
+                    "decision": {
+                        "risk_level": "routine",
+                        "primary_action": "access_denied",
+                        "urgency": "routine",
+                        "advice_text": "Access denied. You do not have permission to access or modify another user's session.",
+                        "steps": ["Use your authorized session identifier or start a new session."],
+                        "outcome_type": "ACCESS_DENIED",
+                        "confidence": 1.0,
+                        "abstained": False,
+                    },
+                    "rag_docs": [],
+                }
+        except Exception:
+            pass
 
         # -------------------------------------------------------------
         # 2. Adversarial & Direct Jailbreak & Protected Info Check
@@ -168,11 +173,33 @@ class LiveChatbot:
             return self.scope.format_out_of_scope_response(topic=out_topic or "general", lang=lang)
 
         # -------------------------------------------------------------
+        # 3b. Educational Scenario Inquiries
+        # -------------------------------------------------------------
+        edu_res = self.security_analyzer._check_educational_inquiry(message, lang=lang)
+        if edu_res:
+            return {
+                "session_id": session_id,
+                "reply_type": "final",
+                "outcome_type": edu_res.get("outcome_type", "BENIGN"),
+                "user_language": lang,
+                "text": edu_res.get("advice_text", ""),
+                "text_en": edu_res.get("advice_text", ""),
+                "steps_primary": edu_res.get("steps", []),
+                "steps_en": edu_res.get("steps", []),
+                "decision": edu_res,
+                "rag_docs": [],
+            }
+
+        # -------------------------------------------------------------
         # 4. Record Incoming Turn & Retrieve Prior Session History
         # -------------------------------------------------------------
-        add_message(session_id, role="user", msg_type="text", content=message, user_id=user_id)
-        history = get_messages(session_id, user_id=user_id)
-        facts = get_facts(session_id, user_id=user_id)
+        try:
+            add_message(session_id, role="user", msg_type="text", content=message, user_id=user_id)
+            history = get_messages(session_id, user_id=user_id)
+            facts = get_facts(session_id, user_id=user_id)
+        except Exception:
+            history = [{"role": "user", "content": message}]
+            facts = {}
 
         # Check if answering a previous decisive question
         last_question_idx = None
@@ -197,14 +224,20 @@ class LiveChatbot:
                 active_facts["confirmed_risk"] = "yes"
             else:
                 active_facts["confirmed_risk"] = "no"
-            set_fact(session_id, "user_answer", message)
-            set_fact(session_id, "confirmed_risk", active_facts["confirmed_risk"])
+            try:
+                set_fact(session_id, "user_answer", message)
+                set_fact(session_id, "confirmed_risk", active_facts["confirmed_risk"])
+            except Exception:
+                pass
         else:
             journey = _detect_journey(message)
             opening_text = message
             active_facts = {}
 
-        create_or_update_session(session_id, journey=journey, audience=audience, language=lang, user_id=user_id)
+        try:
+            create_or_update_session(session_id, journey=journey, audience=audience, language=lang, user_id=user_id)
+        except Exception:
+            pass
 
         # -------------------------------------------------------------
         # 5. Grounding with Dense Vector RAG (pgvector Cosine Retrieval)
@@ -271,37 +304,43 @@ class LiveChatbot:
                         "Call the bank using the number printed on the back of your card.",
                     ]
             elif b_class == "SUSPICIOUS_OR_MALICIOUS":
-                risk_lvl = "critical" if "salasana" in message.lower() or "password" in message.lower() or "otp" in message.lower() else "high"
+                risk_lvl = "critical" if any(w in message.lower() for w in ("salasana", "password", "otp", "pin", "mfa", "credential", "remote", "koodi", "code")) else "high"
                 if lang == "fi":
                     advice = (
-                        "Älä avaa linkkiä, älä luovuta tietoja äläkä siirrä rahaa. Tämä on huijausyritys, "
-                        "jolla yritetään kalastella verkkopankkitunnuksia tai varoja. Pankki ei koskaan kysy "
-                        "tunnuslukuja tai pyydä siirtämään varoja turvatilille."
+                        "Älä luovuta salasanaa tai pankkitietoja soittajalle äläkä avaa linkkejä. Oikea pankki tai yritys "
+                        "ei koskaan kysy salasanaa, PIN-koodia tai OTP-koodia puhelimessa. Sulje puhelu heti ja ota yhteys pankkiin virallisen numeron kautta."
                     )
                     steps = [
-                        "Älä koskaan kerro salasanaa, tunnuslukua tai vahvistuskoodia kenellekään.",
-                        "Älä siirrä rahaa väitetylle 'turvatilille'.",
-                        "Jos luovutit jo tietoja, soita heti pankkisi sulkupalveluun.",
+                        "Älä jaa salasanaasi soittajan kanssa.",
+                        "Älä koskaan kerro kertakäyttökoodia, PIN-koodia tai vahvistuskoodia puhelussa.",
+                        "Lopeta puhelu välittömästi, jos soittaja pyytää tunnuksia.",
+                        "Ota yhteys pankkiisi sen virallista puhelinnumeroa tai sovellusta käyttäen.",
+                        "Jos olet jo luovuttanut tietoja, soita heti pankkisi sulkupalveluun ja suojaa tilisi.",
                     ]
                 elif lang == "sv":
                     advice = (
-                        "Öppna inte länken, lämna inte ut uppgifter och överför inte pengar. Detta är ett bedrägeriförsök "
-                        "för att stjäla bankuppgifter eller pengar. Banker ber aldrig om koder eller lösenord."
+                        "Dela inte ditt lösenord eller dina inloggningsuppgifter med den som ringer. En legitim bank eller "
+                        "organisation frågar ALDRIG efter ditt lösenord, din PIN-kod eller engångskod via telefon. Lägg på omedelbart."
                     )
                     steps = [
-                        "Dela aldrig lösenord eller koder med någon.",
-                        "Överför inte pengar till något 'säkert konto'.",
-                        "Om du redan lämnat ut uppgifter, kontakta bankens spärrtjänst omedelbart.",
+                        "Dela inte ditt lösenord med den som ringer.",
+                        "Uppge aldrig engångskod, PIN-kod eller BankID-kod i ett telefonsamtal.",
+                        "Avsluta samtalet omedelbart om uppringaren ber om inloggningsuppgifter.",
+                        "Kontakta din bank via det officiella numret eller öppna bankens officiella app självständigt.",
+                        "Om du redan har delat uppgifter, kontakta bankens spärrtjänst omedelbart.",
                     ]
                 else:
                     advice = (
-                        "Do not open the link, do not share your login details, and do not transfer money. This is a fraud attempt "
-                        "designed to steal bank access or funds. Banks never ask for passwords or codes."
+                        "Do not share your password or authentication credentials with the caller. A legitimate bank or company "
+                        "NEVER asks for your password, PIN, or OTP over the phone. End the call immediately if the caller "
+                        "is asking for credentials, and contact your bank using the official number."
                     )
                     steps = [
-                        "Never share passwords, PINs, or one-time codes with anyone.",
-                        "Never transfer funds to a supposed 'safe account'.",
-                        "If you already disclosed your details, call your bank's blocking service immediately.",
+                        "Do not share your password with the caller.",
+                        "Never disclose your OTP, PIN, MFA code or other authentication credentials over a call.",
+                        "End the call if the caller is asking for credentials.",
+                        "Contact your bank using the official number or open its official app or website independently.",
+                        "If you already shared credentials, contact the bank immediately and secure your account.",
                     ]
             else:  # BENIGN
                 risk_lvl = "none" if rec_action == "no_action_needed" else "routine"
@@ -376,8 +415,11 @@ class LiveChatbot:
             }
 
             final_ans, is_valid, _ = self.guard.verify_and_guard(candidate, lang=lang)
-            save_decision(session_id, final_ans)
-            add_message(session_id, role="assistant", msg_type="final", content=final_ans.get("advice_text", ""), user_id=user_id)
+            try:
+                save_decision(session_id, final_ans)
+                add_message(session_id, role="assistant", msg_type="final", content=final_ans.get("advice_text", ""), user_id=user_id)
+            except Exception:
+                pass
 
             return {
                 "session_id": session_id,
@@ -447,7 +489,10 @@ class LiveChatbot:
             q_primary = q_topic_dict.get(lang, q_topic_dict.get("en", "Can you provide more details?"))
             q_en = q_topic_dict.get("en", q_primary)
             
-            add_message(session_id, role="assistant", msg_type="question", content=q_primary, user_id=user_id)
+            try:
+                add_message(session_id, role="assistant", msg_type="question", content=q_primary, user_id=user_id)
+            except Exception:
+                pass
             return {
                 "session_id": session_id,
                 "reply_type": "question",
@@ -714,8 +759,11 @@ class LiveChatbot:
         }
 
         final_ans, is_valid, _ = self.guard.verify_and_guard(candidate, lang=lang)
-        save_decision(session_id, final_ans)
-        add_message(session_id, role="assistant", msg_type="final", content=final_ans.get("advice_text", ""), user_id=user_id)
+        try:
+            save_decision(session_id, final_ans)
+            add_message(session_id, role="assistant", msg_type="final", content=final_ans.get("advice_text", ""), user_id=user_id)
+        except Exception:
+            pass
 
         try:
             _repo.add_turn(session_id, turn_index=len(history)+1, role="assistant", content=final_ans.get("advice_text", ""), language=lang)

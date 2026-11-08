@@ -63,6 +63,7 @@ export const Route = createFileRoute("/api/classify")({
           mode?: unknown;
           granted?: unknown;
           profile?: unknown;
+          sender_identity_verified?: unknown;
         } | null;
         const mode = b?.mode === "chat" || b?.mode === "call" ? b.mode : "sms";
         const body =
@@ -73,6 +74,7 @@ export const Route = createFileRoute("/api/classify")({
         const lang = typeof b?.lang === "string" && LANGS.has(b.lang) ? b.lang : "en";
         const profile =
           typeof b?.profile === "string" && PROFILES.has(b.profile) ? b.profile : "default";
+        const sender_identity_verified = Boolean(b?.sender_identity_verified);
         try {
           const granted = Array.isArray(b?.granted)
             ? b.granted
@@ -85,7 +87,7 @@ export const Route = createFileRoute("/api/classify")({
             const res = await fetch(`${apiBase}/api/classify`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ mode, sender, body, lang, granted, profile }),
+              body: JSON.stringify({ mode, sender, body, lang, granted, profile, sender_identity_verified }),
             });
             if (res.ok) {
               const data = await res.text();

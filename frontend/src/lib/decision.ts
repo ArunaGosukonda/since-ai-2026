@@ -56,6 +56,7 @@ export type AssessInput = {
   body: string;
   lang: string;
   sender?: string;
+  sender_identity_verified?: boolean;
   /** Consent-gated signal paths the user agreed to share. */
   granted?: string[];
 };

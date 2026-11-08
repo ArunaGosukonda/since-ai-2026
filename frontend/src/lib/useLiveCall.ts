@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bubble } from "@/components/CallScreens";
-import { CALLER_NUMBER, stageLevel, type Stage } from "@/lib/callScript";
-import { assess, firstSentence, stageOf } from "@/lib/decision";
+import { CALLER_NUMBER, CALL_SCENARIOS, stageLevel, type CallScenarioKey, type Stage } from "@/lib/callScript";
+import { assess, firstSentence, stageOf, type Decision } from "@/lib/decision";
 import { locales, type Lang } from "@/lib/i18n";
 import { pushLog } from "@/lib/live";
 import { useLiveStt } from "@/lib/useLiveStt";
@@ -41,9 +41,11 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
   const [bubbles, setBubbles] = useState<Bubble[]>([]);
   const [stage, setStage] = useState<Stage>("listening");
   const [reason, setReason] = useState<string | undefined>(undefined);
+  const [decision, setDecision] = useState<Decision | null>(null);
   const [mic, setMic] = useState<CallMic>("off");
   const stageRef = useRef<Stage>("listening");
   const callerRef = useRef<string>(CALLER_NUMBER);
+  const verifiedRef = useRef<boolean>(false);
   const said = useRef<string[]>([]);
   const token = useRef(0);
   const browserRec = useRef<SpeechRec | null>(null);
@@ -59,14 +61,16 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
     setMic("off");
   }, [stt.stop]);
 
-  const start = useCallback(async (customCaller: string = CALLER_NUMBER) => {
+  const start = useCallback(async (customCaller: string = CALLER_NUMBER, senderVerified: boolean = false) => {
     stop();
     callerRef.current = customCaller;
+    verifiedRef.current = senderVerified;
     const my = token.current;
     const alive = () => token.current === my;
     setBubbles([]);
     setStage("listening");
     setReason(undefined);
+    setDecision(null);
     stageRef.current = "listening";
     said.current = [];
     setMic("connecting");
@@ -89,9 +93,11 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
         body: said.current.join(" "),
         lang,
         sender: callerRef.current,
+        sender_identity_verified: verifiedRef.current,
       });
       // Pipeline unreachable: keep the current stage. Never show the call as safe without a decision.
       if (!alive() || !d) return;
+      setDecision(d);
       const next = callStage(d.risk_level);
       // Risk never goes down during a call (answers can also arrive out of order).
       if (stageLevel(next) < stageLevel(stageRef.current)) return;
@@ -179,13 +185,34 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
 
   /** Simulates incoming call voice when microphone or live STT is unavailable. */
   const simulate = useCallback(
-    async (customLines?: string[]) => {
+    async (
+      scenarioKey?: CallScenarioKey,
+      customLines?: string[],
+      customCaller?: string,
+      verifiedSender?: boolean,
+    ) => {
       stop();
       const my = token.current;
       const alive = () => token.current === my;
+
+      let scenarioLines: string[] | undefined;
+      let callerNum = customCaller || callerRef.current || CALLER_NUMBER;
+      let isVerified = verifiedSender ?? false;
+
+      if (scenarioKey && CALL_SCENARIOS[scenarioKey]) {
+        const sc = CALL_SCENARIOS[scenarioKey];
+        callerNum = sc.callerNumber;
+        isVerified = Boolean(sc.sender_identity_verified);
+        scenarioLines = sc.lines[lang] || sc.lines.en;
+      }
+
+      callerRef.current = callerNum;
+      verifiedRef.current = isVerified;
+
       setBubbles([]);
       setStage("listening");
       setReason(undefined);
+      setDecision(null);
       stageRef.current = "listening";
       said.current = [];
       setMic("connecting");
@@ -209,9 +236,11 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
           mode: "call",
           body: said.current.join(" "),
           lang,
-          sender: CALLER_NUMBER,
+          sender: callerRef.current,
+          sender_identity_verified: verifiedRef.current,
         });
         if (!alive() || !d) return;
+        setDecision(d);
         const next = callStage(d.risk_level);
         if (stageLevel(next) < stageLevel(stageRef.current)) return;
         if (next !== "listening") setReason(firstSentence(d.advice_text));
@@ -233,7 +262,7 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
           ? "Voitteko antaa salasananne, jotta voin tarkistaa onko pankkitilinne voimassa?"
           : "Can you give me your password so that I can check whether your bank account is valid or not?",
       ];
-      const lines = customLines && customLines.length > 0 ? customLines : defaultLines;
+      const lines = customLines && customLines.length > 0 ? customLines : scenarioLines || defaultLines;
 
       for (const lineText of lines) {
         if (!alive()) return;
@@ -252,5 +281,5 @@ export function useLiveCall(lang: Lang, onScam: () => void) {
   );
 
   useEffect(() => stop, [stop]);
-  return { bubbles, stage, reason, mic, liveFlags: NO_FLAGS, start, stop, simulate };
+  return { bubbles, stage, reason, mic, liveFlags: NO_FLAGS, start, stop, simulate, decision };
 }

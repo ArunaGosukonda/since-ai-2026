@@ -38,16 +38,19 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "mathematics",
         [
-            r"\b(?:solve|calculate|compute|integrate|differentiate|evaluate)\s+(?:this\s+)?(?:complicated\s+)?(?:algebra\s+problem|equation|integral|derivative|algebraic|sum|\d+[\+\-\*/\^])",
+            r"\b(?:solve|calculate|compute|integrate|differentiate|evaluate)\s+(?:this\s+)?(?:complicated\s+)?(?:(?:algebra|math(?:ematics)?)\s+)?(?:problem|equation|integral|derivative|algebraic|sum|\d+[\+\-\*/\^])",
+            r"\b(?:solve|calculate|compute)\b.*?\b(?:mathematics|math|equation|algebra)\b",
             r"\b\d+\s*[\+\-\*/\^x]\s*\d+\s*=\s*\?",
-            r"\b(?:calculus|pythagorean|geometry|trigonometry|quadratic\s+equation|matrix\s+multiplication)\b",
+            r"\b\d+x\s*[\+\-]\s*\d+\s*=\s*\d+\b",
+            r"\b(?:algebra|calculus|pythagorean|geometry|trigonometry|quadratic\s+equation|matrix\s+multiplication)\b",
         ],
     ),
     # General non-security programming
     (
         "general_programming",
         [
-            r"\b(?:write|code|create|build)\s+(?:a|an)\s+(?:todo\s+app|calculator|game|snake\s+game|weather\s+app|tic-?tac-?toe)",
+            r"\b(?:write|code|create|build)\s+(?:a|an)?\s*(?:python\s+)?(?:todo\s+app|calculator|game|snake\s+game|weather\s+app|tic-?tac-?toe|script|program)",
+            r"\b(?:write|code|create|build)\s+a\s+(?:python\s+)?(?:game|app|script)\b",
             r"\b(?:how\s+to\s+use|explain)\s+(?:react\s+useeffect|vue\s+composition|css\s+grid|html\s+flexbox|django\s+models|flutter\s+widget)",
             r"\b(?:write\s+a\s+(?:python\s+)?program\s+to\s+calculate\s+fibonacci|fibonacci\s+numbers?|write\s+a\s+python\s+function\s+to\s+sort|bubble\s+sort|binary\s+search\s+tree)\b",
         ],
@@ -56,10 +59,25 @@ OUT_OF_SCOPE_TOPICS = [
     (
         "entertainment",
         [
-            r"\b(?:recommend|suggest|what\s+is\s+your\s+favourite|favorite|best)\b.*?\b(?:movie|film|tv\s+show|series|anime|song|music|band|actor|actress|netflix|cinema)\b",
+            r"\b(?:recommend|suggest|what\s+is\s+(?:the\s+|your\s+)?(?:favourite|favorite|best|top))\b.*?\b(?:movie|film|tv\s+show|series|anime|song|music|band|actor|actress|netflix|cinema)\b",
             r"\b(?:recommend|suggest)\s+(?:five\s+|5\s+|some\s+)?(?:telugu|tamil|hindi|bollywood|hollywood)?\s*movies?\b",
+            r"\b(?:best\s+telugu\s+movie|favourite\s+movie)\b",
             r"\b(?:movie|film|song|music|netflix|cinema)\b.*?\b(?:recommend|watch|listen)\b",
             r"\b(?:who\s+won\s+the\s+oscar|who\s+played|plot\s+of\s+the\s+movie)\b",
+        ],
+    ),
+    # Weather & Meteorological
+    (
+        "weather",
+        [
+            r"\b(?:weather|temperature|forecast|sää|sääennuste|sataako|lunta|sadetta|aurinkoista|lämpötila|regn|väder|prognos)\b",
+        ],
+    ),
+    # Cooking, Food & Recipes
+    (
+        "cooking_and_recipes",
+        [
+            r"\b(?:recipe|resepti|recept|cook(?:ing)?|bake|keitto|lohikeitto|salmon\s+soup|laxsoppa|how\s+to\s+(?:cook|make|bake|lagar))\b",
         ],
     ),
     # Career & General Resume Advice
@@ -85,6 +103,8 @@ OUT_OF_SCOPE_TOPICS = [
         "investment_advice",
         [
             r"\b(?:which\s+stocks?\s+should\s+i\s+(?:purchase|buy)|should\s+i\s+(?:buy|invest\s+in)|stocks?\s+to\s+buy)\b",
+            r"\b(?:give\s+me\s+)?investment\s+advice\b",
+            r"\b(?:invest|investment)\b.*?\b(?:stock\s*market|stocks?|crypto|shares|trading)\b",
             r"\b(?:invest\s+in\s+(?:bitcoin|ethereum|crypto|stocks?|tesla|gold|mutual\s+funds?))\b",
             r"\b(?:best\s+stocks?\s+to\s+buy|predict\s+the\s+stock\s+market|portfolio\s+diversification)\b",
         ],

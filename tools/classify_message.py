@@ -168,6 +168,16 @@ def run(req):
     known = set(kit.ref("signal_dictionary.json")["signals"])
     granted = [p for p in (req.get("granted") or []) if isinstance(p, str) and p in known]
     profile = load_profile(req.get("profile") if req.get("profile") in PROFILES else "default")
+
+    if mode == "chat" and not req.get("_from_analyzer"):
+        from src.intelligence.security_analyzer import SecurityAnalyzer
+        sa = SecurityAnalyzer()
+        res = sa.analyze(text=body, channel="chat", sender=sender, lang=lang)
+        res.setdefault("case_id", "DEMO-CHAT")
+        res.setdefault("mode", "single_turn")
+        res.setdefault("escalation_required", False)
+        return res
+
     case = build_case(sender, body, lang, mode=mode, granted=granted, profile=profile)
     d = pipeline.assess(case)
     keys = ["risk_level", "urgency", "primary_action", "advice_text"]

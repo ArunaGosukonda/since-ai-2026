@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { i18n, locales, type Lang } from "@/lib/i18n";
-import { isWarning, splitLink, type Msg, type Verdict } from "@/lib/messages";
+import { isWarning, splitLink, MESSAGE_SCENARIOS, type MessageScenario, type Msg, type Verdict } from "@/lib/messages";
 import { dangerSpans, splitSpans } from "@/lib/dangerPhrases";
 import { StageBanner, StepsList, WhyPanel, actionLabel } from "@/components/DecisionViews";
 
@@ -79,17 +79,70 @@ export function Inbox({
   newId,
   onOpen,
   ignored,
+  onSelectScenario,
 }: {
   lang: Lang;
   messages: Msg[];
   newId: string | null;
   onOpen: (m: Msg) => void;
   ignored: string[];
+  onSelectScenario?: (sc: MessageScenario) => void;
 }) {
   const t = i18n[lang];
+  const [scenarioId, setScenarioId] = useState(MESSAGE_SCENARIOS[0].id);
+
   return (
-    <div className="flex flex-1 flex-col pt-4">
+    <div className="flex flex-1 flex-col pt-3">
       <h1 className="mb-2">{t.screens.inbox}</h1>
+
+      {onSelectScenario && (
+        <div className="mb-3 flex flex-col gap-1.5 rounded-2xl border border-msg-blue/30 bg-bubble/40 p-2.5">
+          <label htmlFor="msg-scenario-select" className="text-xs font-bold text-ink-secondary">
+            {lang === "fi" ? "Testaa viestiskenaarioita:" : "Simulate Message Scenario:"}
+          </label>
+          <div className="flex gap-2">
+            <select
+              id="msg-scenario-select"
+              value={scenarioId}
+              onChange={(e) => setScenarioId(e.target.value)}
+              className="h-9 min-w-0 flex-1 rounded-xl border border-border bg-background px-2.5 text-xs font-bold outline-none focus:border-navy"
+            >
+              <optgroup label="Genuine Banking & Benign">
+                {MESSAGE_SCENARIOS.filter((s) => s.category === "genuine").map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title[lang] || s.title.en}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Phishing & Fraud Scenarios">
+                {MESSAGE_SCENARIOS.filter((s) => s.category === "phishing").map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title[lang] || s.title.en}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Out-of-Scope">
+                {MESSAGE_SCENARIOS.filter((s) => s.category === "out_of_scope").map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.title[lang] || s.title.en}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <button
+              type="button"
+              onClick={() => {
+                const sc = MESSAGE_SCENARIOS.find((s) => s.id === scenarioId);
+                if (sc) onSelectScenario(sc);
+              }}
+              className="flex items-center gap-1 rounded-xl bg-msg-blue px-3 text-xs font-bold text-on-dark shadow hover:opacity-90"
+            >
+              <SendHorizontal size={14} aria-hidden /> {lang === "fi" ? "Lähetä" : "Receive"}
+            </button>
+          </div>
+        </div>
+      )}
+
       <ul className="-mx-6">
         {messages.map((m) => (
           <Row
@@ -186,6 +239,7 @@ export function MessageDetail({
   const text = textOf(msg, lang);
   const { before, link, after } = splitLink(text);
   const action = d?.primary_action;
+  const outcomeType = (d as unknown as { outcome_type?: string })?.outcome_type;
 
   return (
     <div className="flex flex-1 flex-col gap-4 pt-2" data-testid="message-detail">
@@ -195,7 +249,14 @@ export function MessageDetail({
       >
         <ChevronLeft size={26} aria-hidden /> {t.back}
       </button>
-      <div className="text-[22px] font-bold">{senderOf(msg, lang)}</div>
+      <div className="flex items-center justify-between">
+        <div className="text-[22px] font-bold">{senderOf(msg, lang)}</div>
+        {outcomeType && (
+          <span className="rounded-full bg-navy/10 px-3 py-1 text-xs font-bold text-navy">
+            {outcomeType}
+          </span>
+        )}
+      </div>
 
       {stage && <StageBanner stage={stage} lang={lang} />}
       {stage && d && (

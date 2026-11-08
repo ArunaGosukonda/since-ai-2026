@@ -1,16 +1,17 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   MessageCircleQuestion,
   Mic,
   OctagonAlert,
   Phone,
   PhoneOff,
+  Play,
   ShieldBan,
   ShieldCheck,
   TriangleAlert,
 } from "lucide-react";
 import { i18n, type Lang } from "@/lib/i18n";
-import { CALLER_NUMBER, stageLevel, type Stage } from "@/lib/callScript";
+import { CALLER_NUMBER, CALL_SCENARIOS, stageLevel, type CallScenarioKey, type Stage } from "@/lib/callScript";
 import { dangerSpans, phraseSpans, splitSpans } from "@/lib/dangerPhrases";
 import type { CallMic } from "@/lib/useLiveCall";
 
@@ -40,6 +41,8 @@ export function IncomingCall({
   stage,
   liveFlags = [],
   callerNumber = CALLER_NUMBER,
+  callerVerified = false,
+  currentScenario,
   onDecline,
   onAnswer,
   onSimulate,
@@ -51,11 +54,22 @@ export function IncomingCall({
   stage: Stage;
   liveFlags?: string[];
   callerNumber?: string;
+  callerVerified?: boolean;
+  currentScenario?: CallScenarioKey;
   onDecline: () => void;
   onAnswer: () => void;
   onSimulate?: () => void;
 }) {
-  if (phase === "ringing") return <Ringing lang={lang} callerNumber={callerNumber} onDecline={onDecline} onAnswer={onAnswer} />;
+  if (phase === "ringing")
+    return (
+      <Ringing
+        lang={lang}
+        callerNumber={callerNumber}
+        callerVerified={callerVerified}
+        onDecline={onDecline}
+        onAnswer={onAnswer}
+      />
+    );
   return (
     <InCall
       lang={lang}
@@ -63,6 +77,9 @@ export function IncomingCall({
       bubbles={bubbles}
       stage={stage}
       liveFlags={liveFlags}
+      callerNumber={callerNumber}
+      callerVerified={callerVerified}
+      currentScenario={currentScenario}
       onHangUp={onDecline}
       onSimulate={onSimulate}
     />
@@ -72,11 +89,13 @@ export function IncomingCall({
 function Ringing({
   lang,
   callerNumber,
+  callerVerified,
   onDecline,
   onAnswer,
 }: {
   lang: Lang;
   callerNumber: string;
+  callerVerified?: boolean;
   onDecline: () => void;
   onAnswer: () => void;
 }) {
@@ -88,10 +107,17 @@ function Ringing({
     <div className="flex flex-1 flex-col items-center pt-10 text-center">
       <div className="text-lg font-bold text-ink-secondary">{t.incoming}</div>
       <div className="mt-3 text-[32px] font-bold">{callerNumber}</div>
-      <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-careful px-4 py-1.5 text-lg font-bold text-careful-foreground">
-        <TriangleAlert size={20} className="text-careful-icon" aria-hidden />
-        {t.unknown}
-      </div>
+      {callerVerified ? (
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-call-green/20 px-4 py-1.5 text-base font-bold text-call-green">
+          <ShieldCheck size={20} className="text-call-green" aria-hidden />
+          {lang === "fi" ? "Todennettu pankkikanava" : "Verified Bank Channel"}
+        </div>
+      ) : (
+        <div className="mt-3 inline-flex items-center gap-2 rounded-full bg-careful px-4 py-1.5 text-base font-bold text-careful-foreground">
+          <TriangleAlert size={20} className="text-careful-icon" aria-hidden />
+          {t.unknown}
+        </div>
+      )}
       <div className="mt-auto flex w-full justify-around pb-4">
         <button onClick={onDecline} className="flex flex-col items-center gap-2 font-bold">
           <span className="flex h-20 w-20 items-center justify-center rounded-full bg-scam text-on-dark">
@@ -116,6 +142,8 @@ function InCall({
   bubbles,
   stage,
   liveFlags,
+  callerNumber = CALLER_NUMBER,
+  callerVerified = false,
   onHangUp,
   onSimulate,
 }: {
@@ -124,6 +152,9 @@ function InCall({
   bubbles: Bubble[];
   stage: Stage;
   liveFlags: string[];
+  callerNumber?: string;
+  callerVerified?: boolean;
+  currentScenario?: CallScenarioKey;
   onHangUp: () => void;
   onSimulate?: () => void;
 }) {
@@ -142,30 +173,50 @@ function InCall({
   ];
 
   return (
-    <div className="flex flex-1 flex-col gap-4 pt-4">
+    <div className="flex flex-1 flex-col gap-3 pt-3">
       <div className="text-center">
-        <div className="text-[28px] font-bold">{CALLER_NUMBER}</div>
-        <div className="mt-2 inline-flex items-center gap-2 rounded-full bg-careful px-4 py-1.5 text-lg font-bold text-careful-foreground">
-          <TriangleAlert size={20} className="text-careful-icon" aria-hidden />
-          {t.unknown}
-        </div>
+        <div className="text-[26px] font-bold">{callerNumber}</div>
+        {callerVerified ? (
+          <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-call-green/20 px-3 py-1 text-sm font-bold text-call-green">
+            <ShieldCheck size={16} className="text-call-green" aria-hidden />
+            {lang === "fi" ? "Todennettu pankkikanava" : "Verified Bank Channel"}
+          </div>
+        ) : (
+          <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-careful px-3 py-1 text-sm font-bold text-careful-foreground">
+            <TriangleAlert size={16} className="text-careful-icon" aria-hidden />
+            {t.unknown}
+          </div>
+        )}
       </div>
 
-      <div className="flex items-center justify-center gap-3 rounded-full bg-dna px-5 py-3 font-bold text-on-dark">
+      <div className="flex items-center justify-center gap-3 rounded-full bg-dna px-4 py-2 font-bold text-sm text-on-dark">
         {t.answering}
         <span className="flex gap-1" aria-hidden>
           {[0, 1, 2].map((i) => (
             <span
               key={i}
-              className="dot-pulse h-2 w-2 rounded-full bg-on-dark"
+              className="dot-pulse h-1.5 w-1.5 rounded-full bg-on-dark"
               style={{ animationDelay: `${i * 0.2}s` }}
             />
           ))}
         </span>
       </div>
+
+      {onSimulate && mic !== "on" && (
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={() => onSimulate()}
+            className="flex h-8 items-center gap-1.5 rounded-lg bg-navy/80 px-3 text-xs font-bold text-on-dark shadow hover:opacity-90"
+          >
+            <Play size={12} aria-hidden /> {lang === "fi" ? "Toista puheluääntä" : "Play Sample Voice"}
+          </button>
+        </div>
+      )}
+
       {mic === "on" && (
-        <div className="flex items-center justify-center gap-2 text-base font-bold text-scam">
-          <Mic size={18} aria-hidden /> {t.liveMic}
+        <div className="flex items-center justify-center gap-2 text-xs font-bold text-scam">
+          <Mic size={14} aria-hidden /> {t.liveMic}
         </div>
       )}
       {mic === "connecting" && (

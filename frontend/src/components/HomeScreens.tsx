@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { useState, type ReactNode } from "react";
 import { i18n, locales, type Lang } from "@/lib/i18n";
-import { CALLER_NUMBER } from "@/lib/callScript";
+import { CALLER_NUMBER, CALL_SCENARIOS, type CallScenarioKey } from "@/lib/callScript";
 
 export type AppId = "phone" | "messages" | "dna";
 
@@ -124,15 +124,20 @@ export function PhoneApp({
   calls: CallLog[];
   numberBlocked: boolean;
   onHome: () => void;
-  onDemoCall: (customNumber?: string) => void;
+  onDemoCall: (customNumber?: string, verifiedSender?: boolean) => void;
 }) {
-  const [callerInput, setCallerInput] = useState("");
+  const [callerInput, setCallerInput] = useState(CALLER_NUMBER);
   const t = i18n[lang];
   const p = t.phone;
   const whenOf = (c: CallLog) =>
     typeof c.when === "number"
       ? new Date(c.when).toLocaleTimeString(locales[lang], { hour: "2-digit", minute: "2-digit" })
       : p[c.when];
+
+  const handleCall = () => {
+    onDemoCall(callerInput.trim() || CALLER_NUMBER, false);
+  };
+
   return (
     <div className="flex flex-1 flex-col pt-2">
       <BackHome label={t.home.home} onClick={onHome} />
@@ -166,9 +171,11 @@ export function PhoneApp({
           </li>
         ))}
       </ul>
-      <div className="mt-4 flex flex-col gap-1.5 rounded-2xl border-2 border-dashed border-ink-secondary/40 p-3">
+
+      {/* Caller Input & Dial Controls */}
+      <div className="mt-3 flex flex-col gap-2 rounded-2xl border border-border p-3 bg-bubble/30">
         <label htmlFor="caller-number-input" className="text-xs font-bold text-ink-secondary">
-          Simulate incoming call from any number:
+          {lang === "fi" ? "Soittajan puhelinnumero:" : "Caller Phone Number:"}
         </label>
         <div className="flex gap-2">
           <input
@@ -177,18 +184,22 @@ export function PhoneApp({
             value={callerInput}
             onChange={(e) => setCallerInput(e.target.value)}
             placeholder={CALLER_NUMBER}
-            className="h-10 min-w-0 flex-1 rounded-xl border border-border px-3 text-sm font-bold outline-none focus:border-navy"
+            className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-sm font-bold outline-none focus:border-navy"
+            aria-label="Caller phone number"
           />
           <button
             type="button"
-            onClick={() => onDemoCall(callerInput.trim() || CALLER_NUMBER)}
-            className="flex items-center gap-1.5 rounded-xl bg-navy px-4 text-xs font-bold text-on-dark"
+            onClick={handleCall}
+            className="flex items-center gap-1.5 rounded-xl bg-call-green px-4 text-xs font-bold text-on-dark shadow hover:opacity-90"
           >
-            <PhoneIncoming size={16} aria-hidden /> Call
+            <PhoneIncoming size={16} aria-hidden /> {lang === "fi" ? "Soita" : "Call"}
           </button>
         </div>
       </div>
-      <DemoButton onClick={() => onDemoCall(callerInput.trim() || CALLER_NUMBER)}>{p.demoCall}</DemoButton>
+
+      <DemoButton onClick={handleCall}>
+        {lang === "fi" ? "Käynnistä saapuva puhelu" : "Start Live Call"}
+      </DemoButton>
     </div>
   );
 }
